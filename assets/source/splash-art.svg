@@ -49,11 +49,13 @@
   </g>
 
   <circle cx="404" cy="506" r="36" fill="#78DB9F"/>
-  <circle cx="616" cy="304" r="32" fill="#EE967D"/>
-  <path d="M404 484V528" stroke="white" stroke-width="12" stroke-linecap="round"/>
-  <path d="M382 506H426" stroke="white" stroke-width="12" stroke-linecap="round"/>
-  <path d="M592 304H640" stroke="white" stroke-width="10" stroke-linecap="round"/>
-  <path d="M396 258L404 282L428 290L404 298L396 322L388 298L364 290L388 282L396 258Z" fill="#FFD46C"/>
+  <circle cx="404" cy="506" r="36" fill="#61AFFF"/>
+  <circle cx="616" cy="304" r="32" fill="#FF6173"/>
+  <path d="M386 494L398 506L406 498L422 514" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M412 514H422V504" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M600 316L612 304L620 312L634 298" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M622 298H634V310" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M392 258L416 284H402L414 314L382 284H396L392 258Z" fill="#FFD46C"/>
 
   <text x="512" y="742" text-anchor="middle" fill="#253046" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="88" font-weight="700">Thumbi</text>
   <text x="512" y="804" text-anchor="middle" fill="#71809A" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="600" letter-spacing="2">daily thumbs and tally</text>
