@@ -289,20 +289,20 @@ function AppContent() {
           </View>
 
           <View style={styles.metricRow}>
-            <MetricPill
-              accentColor={palette.rise}
-              backgroundColor={palette.riseSoft}
-              icon="thumb-up-outline"
-              label="엄지 척!"
-              value={todaySummary.upCount}
-            />
-            <MetricPill
-              accentColor={palette.fall}
-              backgroundColor={palette.fallSoft}
-              icon="thumb-down-outline"
-              label="이건 좀..."
-              value={todaySummary.downCount}
-            />
+              <MetricPill
+                accentColor={palette.rise}
+                backgroundColor={palette.riseSoft}
+                icon="thumb-up-outline"
+                label="엄지 척!!"
+                value={todaySummary.upCount}
+              />
+              <MetricPill
+                accentColor={palette.fall}
+                backgroundColor={palette.fallSoft}
+                icon="thumb-down-outline"
+                label="이건 좀.."
+                value={todaySummary.downCount}
+              />
           </View>
 
           <View style={styles.inputCard}>
@@ -323,7 +323,7 @@ function AppContent() {
               colors={riseButtonColors}
               icon="thumb-up"
               kind="up"
-              label="엄지 척!"
+              label="엄지 척!!"
               onLongPress={handleRepeatStart}
               onPressOut={stopRepeatInput}
               onPress={() => handleAddEntry('up')}
@@ -334,7 +334,7 @@ function AppContent() {
               colors={fallButtonColors}
               icon="thumb-down"
               kind="down"
-              label="이건 좀..."
+              label="이건 좀.."
               onLongPress={handleRepeatStart}
               onPressOut={stopRepeatInput}
               onPress={() => handleAddEntry('down')}
@@ -942,9 +942,12 @@ function StatCard({
       </Text>
 
       <View style={styles.statCardDetails}>
-        <Text style={[styles.statDetail, { color: palette.rise }]}>상승 {summary.upCount}</Text>
-        <Text style={[styles.statDetail, { color: palette.fall }]}>하락 {summary.downCount}</Text>
-        <Text style={styles.statDetail}>총 {summary.total}</Text>
+        <Text style={[styles.statDetail, { color: palette.rise }]}>
+          {`엄지 척!! ${summary.upCount}`}
+        </Text>
+        <Text style={[styles.statDetail, { color: palette.fall }]}>
+          {`이건 좀.. ${summary.downCount}`}
+        </Text>
       </View>
     </View>
   );
@@ -977,13 +980,13 @@ function BestRecordCard({
         <BestRecordRow
           accentColor={palette.rise}
           icon="thumb-up-outline"
-          label="최고 상승"
+          label="엄지 척!!"
           record={records.upRecord}
         />
         <BestRecordRow
           accentColor={palette.fall}
           icon="thumb-down-outline"
-          label="최고 하락"
+          label="이건 좀.."
           record={records.downRecord}
         />
       </View>
@@ -1009,7 +1012,7 @@ function BestRecordRow({
       style={[
         styles.recordRow,
         {
-          backgroundColor: record ? `${accentColor}0F` : 'rgba(255,255,255,0.68)',
+          backgroundColor: record ? `${accentColor}0F` : palette.panel,
           borderColor: record ? `${accentColor}1F` : palette.border,
         },
       ]}
@@ -1060,8 +1063,8 @@ function UndoSnackbar({
       : (['#EAF2FF', '#C7DDFF'] as const);
   const addedCount = action.entries.length;
   const title = isRise
-    ? `엄지 척! ${addedCount}건 추가됨`
-    : `이건 좀... ${addedCount}건 추가됨`;
+    ? `엄지 척!! ${addedCount}건 추가됨`
+    : `이건 좀.. ${addedCount}건 추가됨`;
   const subtitle =
     addedCount > 1
       ? '롱프레스 묶음 입력을 되돌릴 수 있어요.'
@@ -1254,6 +1257,7 @@ function TabBarButton({
 }) {
   const { palette, styles } = useAppTheme();
   const textColor = active ? palette.text : palette.textMuted;
+  const resolvedTextColor = active ? '#0E1C19' : textColor;
 
   return (
     <Pressable
@@ -1264,8 +1268,8 @@ function TabBarButton({
       ]}
     >
       <View style={styles.tabButtonInner}>
-        <MaterialCommunityIcons color={textColor} name={icon} size={20} />
-        <Text style={[styles.tabButtonLabel, { color: textColor }]}>{label}</Text>
+        <MaterialCommunityIcons color={resolvedTextColor} name={icon} size={20} />
+        <Text style={[styles.tabButtonLabel, { color: resolvedTextColor }]}>{label}</Text>
       </View>
     </Pressable>
   );
@@ -1331,14 +1335,14 @@ function DayDetailModal({
                 accentColor={palette.rise}
                 backgroundColor={palette.riseSoft}
                 icon="thumb-up-outline"
-                label="엄지 척!"
+                label="엄지 척!!"
                 value={summary?.upCount ?? 0}
               />
               <MetricPill
                 accentColor={palette.fall}
                 backgroundColor={palette.fallSoft}
                 icon="thumb-down-outline"
-                label="이건 좀..."
+                label="이건 좀.."
                 value={summary?.downCount ?? 0}
               />
             </View>
@@ -1410,9 +1414,10 @@ function EntryRow({
   entry: RecentRecordGroup;
   onDelete: (entry: RecentRecordGroup) => void;
 }) {
-  const { palette, styles } = useAppTheme();
+  const { isDark, palette, styles } = useAppTheme();
   const accentColor = getEntryAccent(entry.kind, palette);
   const backgroundColor = getEntrySoft(entry.kind, palette);
+  const deleteTint = isDark ? '#F39AA4' : '#D26A76';
   const title = entry.note || (entry.kind === 'up' ? '칭찬 기록' : '주의 기록');
 
   return (
@@ -1446,9 +1451,13 @@ function EntryRow({
       <Pressable
         hitSlop={10}
         onPress={() => onDelete(entry)}
-        style={({ pressed }) => [styles.deleteButton, pressed && styles.deletePressed]}
+        style={({ pressed }) => [
+          styles.deleteButton,
+          { backgroundColor: `${deleteTint}18` },
+          pressed && styles.deletePressed,
+        ]}
       >
-        <MaterialCommunityIcons color={palette.textMuted} name="trash-can-outline" size={18} />
+        <MaterialCommunityIcons color={deleteTint} name="trash-can-outline" size={18} />
       </Pressable>
     </View>
   );
@@ -2465,8 +2474,8 @@ function createStyles(palette: Palette) {
     bottom: 0,
     height: 44,
     borderRadius: 20,
-    backgroundColor: '#D7FAF4',
-    shadowColor: '#8CD8D0',
+    backgroundColor: isDark ? '#A9F2E8' : '#D7FAF4',
+    shadowColor: isDark ? '#67D8CC' : '#8CD8D0',
     shadowOpacity: 0.2,
     shadowRadius: 10,
     shadowOffset: {
@@ -2480,14 +2489,14 @@ function createStyles(palette: Palette) {
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 44,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 20,
   },
   tabButtonInner: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 1,
-    transform: [{ translateY: -1 }],
+    gap: 0,
+    transform: [{ translateY: -2 }],
   },
   tabButtonPressed: {
     opacity: 0.78,
@@ -2495,7 +2504,7 @@ function createStyles(palette: Palette) {
   tabButtonLabel: {
     fontFamily: fonts.body,
     fontSize: 12,
-    lineHeight: 12,
+    lineHeight: 11,
     fontWeight: '700',
   },
   });
