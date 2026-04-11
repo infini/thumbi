@@ -2,7 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState, type ComponentProps } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+} from 'react';
 import PagerView from 'react-native-pager-view';
 import {
   SafeAreaProvider,
@@ -19,6 +27,7 @@ import {
   Text,
   TextInput,
   View,
+  useColorScheme,
 } from 'react-native';
 import {
   type CalendarDay,
@@ -47,7 +56,12 @@ import {
   type VoteKind,
   type VoteSummary,
 } from './src/lib/records';
-import { fonts, palette } from './src/theme';
+import {
+  darkPalette,
+  fonts,
+  getPalette,
+  type Palette,
+} from './src/theme';
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 const UNDO_TIMEOUT_MS = 5000;
@@ -74,15 +88,48 @@ interface RecentRecordGroup {
   points: number;
 }
 
+type AppStyles = ReturnType<typeof createStyles>;
+
+interface ThemeContextValue {
+  isDark: boolean;
+  palette: Palette;
+  styles: AppStyles;
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
 export default function App() {
+  const colorScheme = useColorScheme();
+  const palette = useMemo(() => getPalette(colorScheme), [colorScheme]);
+  const styles = useMemo(() => createStyles(palette), [palette]);
+
   return (
     <SafeAreaProvider>
-      <AppContent />
+      <ThemeContext.Provider
+        value={{
+          isDark: colorScheme === 'dark',
+          palette,
+          styles,
+        }}
+      >
+        <AppContent />
+      </ThemeContext.Provider>
     </SafeAreaProvider>
   );
 }
 
+function useAppTheme() {
+  const theme = useContext(ThemeContext);
+
+  if (!theme) {
+    throw new Error('useAppTheme must be used within ThemeContext.Provider');
+  }
+
+  return theme;
+}
+
 function AppContent() {
+  const { isDark, palette, styles } = useAppTheme();
   const insets = useSafeAreaInsets();
   const [entries, setEntries] = useState<VoteEntry[]>([]);
   const [draftNote, setDraftNote] = useState('');
@@ -180,11 +227,11 @@ function AppContent() {
   const yearBestRecords = getBestPeriodRecords(entries, 'year');
   const calendarDays = getMonthCalendar(entries, calendarCursor);
   const recentEntries = getRecentRecordGroups(entries).slice(0, 6);
-  const todayScoreColor = getTrendColor(todaySummary.score);
+  const todayScoreColor = getTrendColor(todaySummary.score, palette);
   const selectedDaySummary = selectedDate ? getDaySummary(entries, selectedDate) : null;
   const selectedDayEntries = selectedDate ? getEntriesForDay(entries, selectedDate) : [];
   const selectedDayTrendColor = selectedDaySummary
-    ? getTrendColor(selectedDaySummary.score)
+    ? getTrendColor(selectedDaySummary.score, palette)
     : palette.text;
   const scrollBottomPadding = TAB_BAR_HEIGHT + insets.bottom + 72;
 
@@ -219,7 +266,7 @@ function AppContent() {
               style={[
                 styles.scoreBubble,
                 {
-                  backgroundColor: getTrendSoft(todaySummary.score),
+                  backgroundColor: getTrendSoft(todaySummary.score, palette),
                   borderColor: `${todayScoreColor}28`,
                 },
               ]}
@@ -388,25 +435,25 @@ function AppContent() {
 
         <View style={styles.statsGrid}>
           <StatCard
-            accentColor={getTrendColor(weekSummary.score)}
+            accentColor={getTrendColor(weekSummary.score, palette)}
             period={formatCompactWeekRange(now)}
             summary={weekSummary}
             title="주간"
           />
           <StatCard
-            accentColor={getTrendColor(monthSummary.score)}
+            accentColor={getTrendColor(monthSummary.score, palette)}
             period={formatCompactMonthRange(now)}
             summary={monthSummary}
             title="월간"
           />
           <StatCard
-            accentColor={getTrendColor(quarterSummary.score)}
+            accentColor={getTrendColor(quarterSummary.score, palette)}
             period={formatCompactQuarterRange(now)}
             summary={quarterSummary}
             title="분기"
           />
           <StatCard
-            accentColor={getTrendColor(yearSummary.score)}
+            accentColor={getTrendColor(yearSummary.score, palette)}
             period={formatCompactYearRange(now)}
             summary={yearSummary}
             title="연간"
@@ -587,7 +634,7 @@ function AppContent() {
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <View pointerEvents="none" style={styles.backgroundOrbs}>
         <View style={[styles.orb, styles.orbRise]} />
         <View style={[styles.orb, styles.orbFall]} />
@@ -604,7 +651,14 @@ function AppContent() {
                   size={18}
                 />
               </View>
-              <Text style={styles.brandText}>All We Experience</Text>
+              <Text style={styles.brandText}>
+                <Text style={styles.brandLetterText}>A</Text>
+                <Text style={styles.brandRestText}>ll </Text>
+                <Text style={styles.brandLetterText}>W</Text>
+                <Text style={styles.brandRestText}>e </Text>
+                <Text style={styles.brandLetterText}>E</Text>
+                <Text style={styles.brandRestText}>xperience</Text>
+              </Text>
               <Pressable
                 hitSlop={8}
                 onPress={() => setIsInfoOpen(true)}
@@ -706,6 +760,8 @@ function MetricPill({
   label: string;
   value: number;
 }) {
+  const { styles } = useAppTheme();
+
   return (
     <View style={[styles.metricPill, { backgroundColor }]}>
       <View style={[styles.metricPillIcon, { backgroundColor: `${accentColor}20` }]}>
@@ -740,6 +796,8 @@ function ActionButton({
   iconColor: string;
   labelColor: string;
 }) {
+  const { styles } = useAppTheme();
+
   return (
     <Pressable
       delayLongPress={350}
@@ -773,7 +831,9 @@ function CalendarDayCell({
   day: CalendarDay;
   onPress: () => void;
 }) {
-  const trendColor = day.summary.total > 0 ? getTrendColor(day.summary.score) : palette.textSoft;
+  const { palette, styles } = useAppTheme();
+  const trendColor =
+    day.summary.total > 0 ? getTrendColor(day.summary.score, palette) : palette.textSoft;
   const hasEntries = day.summary.total > 0;
 
   return (
@@ -782,7 +842,9 @@ function CalendarDayCell({
       style={({ pressed }) => [
         styles.calendarCell,
         {
-          backgroundColor: hasEntries ? getTrendSoft(day.summary.score) : 'rgba(255,255,255,0.64)',
+          backgroundColor: hasEntries
+            ? getTrendSoft(day.summary.score, palette)
+            : palette.panel,
           borderColor: day.isToday
             ? `${trendColor}50`
             : hasEntries
@@ -822,6 +884,8 @@ function CalendarNavButton({
   icon: IconName;
   onPress: () => void;
 }) {
+  const { palette, styles } = useAppTheme();
+
   return (
     <Pressable
       hitSlop={6}
@@ -844,13 +908,15 @@ function StatCard({
   summary: VoteSummary;
   title: string;
 }) {
+  const { palette, styles } = useAppTheme();
+
   return (
     <View
       style={[
         styles.statCard,
         {
           borderColor: `${accentColor}20`,
-          backgroundColor: getTrendSurface(summary.score),
+          backgroundColor: getTrendSurface(summary.score, palette),
         },
       ]}
     >
@@ -886,6 +952,8 @@ function BestRecordCard({
   };
   title: string;
 }) {
+  const { palette, styles } = useAppTheme();
+
   return (
     <View style={styles.bestCard}>
       <View style={styles.bestCardHeader}>
@@ -924,6 +992,8 @@ function BestRecordRow({
   label: string;
   record: BestPeriodRecord | null;
 }) {
+  const { palette, styles } = useAppTheme();
+
   return (
     <View
       style={[
@@ -968,6 +1038,7 @@ function UndoSnackbar({
   bottomOffset: number;
   onUndo: () => void;
 }) {
+  const { palette, styles } = useAppTheme();
   const isRise = action.kind === 'up';
   const accentColor = isRise ? palette.rise : palette.fall;
   const colors = isRise
@@ -1026,6 +1097,7 @@ function BottomTabBar({
   onChange: (tab: TabKey) => void;
   tabPosition: Animated.Value;
 }) {
+  const { palette, styles } = useAppTheme();
   const [barWidth, setBarWidth] = useState(0);
   const horizontalPadding = 10;
   const gap = 10;
@@ -1093,6 +1165,8 @@ function InfoModal({
   onClose: () => void;
   visible: boolean;
 }) {
+  const { palette, styles } = useAppTheme();
+
   return (
     <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>
       <View style={styles.modalOverlay}>
@@ -1139,6 +1213,8 @@ function InfoRow({
   icon: IconName;
   text: string;
 }) {
+  const { palette, styles } = useAppTheme();
+
   return (
     <View style={styles.infoRow}>
       <View style={styles.infoRowIcon}>
@@ -1162,6 +1238,7 @@ function TabBarButton({
   label: string;
   onPress: () => void;
 }) {
+  const { palette, styles } = useAppTheme();
   const textColor = active ? palette.text : palette.textMuted;
 
   return (
@@ -1172,8 +1249,10 @@ function TabBarButton({
         pressed && styles.tabButtonPressed,
       ]}
     >
-      <MaterialCommunityIcons color={textColor} name={icon} size={20} />
-      <Text style={[styles.tabButtonLabel, { color: textColor }]}>{label}</Text>
+      <View style={styles.tabButtonInner}>
+        <MaterialCommunityIcons color={textColor} name={icon} size={20} />
+        <Text style={[styles.tabButtonLabel, { color: textColor }]}>{label}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -1193,6 +1272,8 @@ function DayDetailModal({
   summary: VoteSummary | null;
   trendColor: string;
 }) {
+  const { palette, styles } = useAppTheme();
+
   return (
     <Modal
       animationType="fade"
@@ -1219,7 +1300,11 @@ function DayDetailModal({
             <View
               style={[
                 styles.dayModalStat,
-                { backgroundColor: summary ? getTrendSoft(summary.score) : palette.panel },
+                {
+                  backgroundColor: summary
+                    ? getTrendSoft(summary.score, palette)
+                    : palette.panel,
+                },
               ]}
             >
               <Text style={styles.dayModalStatLabel}>점수</Text>
@@ -1311,8 +1396,9 @@ function EntryRow({
   entry: RecentRecordGroup;
   onDelete: (entry: RecentRecordGroup) => void;
 }) {
-  const accentColor = getEntryAccent(entry.kind);
-  const backgroundColor = getEntrySoft(entry.kind);
+  const { palette, styles } = useAppTheme();
+  const accentColor = getEntryAccent(entry.kind, palette);
+  const backgroundColor = getEntrySoft(entry.kind, palette);
   const title = entry.note || (entry.kind === 'up' ? '칭찬 기록' : '주의 기록');
 
   return (
@@ -1354,7 +1440,7 @@ function EntryRow({
   );
 }
 
-function getTrendColor(score: number): string {
+function getTrendColor(score: number, palette: Palette): string {
   if (score > 0) {
     return palette.rise;
   }
@@ -1366,7 +1452,7 @@ function getTrendColor(score: number): string {
   return palette.text;
 }
 
-function getTrendSoft(score: number): string {
+function getTrendSoft(score: number, palette: Palette): string {
   if (score > 0) {
     return palette.riseSoft;
   }
@@ -1375,26 +1461,30 @@ function getTrendSoft(score: number): string {
     return palette.fallSoft;
   }
 
-  return 'rgba(255,255,255,0.82)';
+  return palette.panelStrong;
 }
 
-function getTrendSurface(score: number): string {
+function getTrendSurface(score: number, palette: Palette): string {
   if (score > 0) {
-    return 'rgba(255, 93, 112, 0.07)';
+    return palette === darkPalette
+      ? 'rgba(103, 216, 204, 0.14)'
+      : 'rgba(103, 216, 204, 0.08)';
   }
 
   if (score < 0) {
-    return 'rgba(93, 168, 255, 0.08)';
+    return palette === darkPalette
+      ? 'rgba(127, 178, 226, 0.15)'
+      : 'rgba(127, 178, 226, 0.09)';
   }
 
   return palette.panel;
 }
 
-function getEntryAccent(kind: VoteKind): string {
+function getEntryAccent(kind: VoteKind, palette: Palette): string {
   return kind === 'up' ? palette.rise : palette.fall;
 }
 
-function getEntrySoft(kind: VoteKind): string {
+function getEntrySoft(kind: VoteKind, palette: Palette): string {
   return kind === 'up' ? palette.riseSoft : palette.fallSoft;
 }
 
@@ -1446,7 +1536,10 @@ function getRecentRecordGroups(entries: VoteEntry[]): RecentRecordGroup[] {
   return groups;
 }
 
-const styles = StyleSheet.create({
+function createStyles(palette: Palette) {
+  const isDark = palette === darkPalette;
+
+  return StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: palette.background,
@@ -1511,7 +1604,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: isDark ? 'rgba(22,29,27,0.92)' : 'rgba(255,255,255,0.72)',
     borderWidth: 1,
     borderColor: palette.border,
   },
@@ -1521,12 +1614,19 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.82)',
+    backgroundColor: isDark ? 'rgba(24,32,30,0.96)' : 'rgba(255,255,255,0.82)',
   },
   brandText: {
-    color: palette.text,
     fontFamily: fonts.display,
     fontSize: 16,
+    fontWeight: '700',
+  },
+  brandLetterText: {
+    color: '#34CDBF',
+    fontWeight: '800',
+  },
+  brandRestText: {
+    color: palette.text,
     fontWeight: '700',
   },
   brandInfoButton: {
@@ -1535,7 +1635,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    backgroundColor: isDark ? 'rgba(24,32,30,0.94)' : 'rgba(255,255,255,0.78)',
   },
   brandInfoPressed: {
     opacity: 0.7,
@@ -1545,7 +1645,7 @@ const styles = StyleSheet.create({
     padding: 22,
     gap: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.6)',
+    borderColor: isDark ? 'rgba(223,248,244,0.08)' : 'rgba(255,255,255,0.6)',
     shadowColor: '#7B8BB0',
     shadowOpacity: 0.12,
     shadowRadius: 24,
@@ -1577,7 +1677,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: isDark ? 'rgba(24,32,30,0.94)' : 'rgba(255,255,255,0.72)',
     borderWidth: 1,
     borderColor: palette.border,
   },
@@ -1642,7 +1742,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: 'rgba(255,255,255,0.76)',
+    backgroundColor: isDark ? 'rgba(18,25,24,0.96)' : 'rgba(255,255,255,0.76)',
     borderWidth: 1,
     borderColor: palette.border,
     color: palette.text,
@@ -1682,7 +1782,7 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: isDark ? 'rgba(24,32,30,0.94)' : 'rgba(255,255,255,0.72)',
   },
   actionButtonLabel: {
     fontFamily: fonts.display,
@@ -1715,7 +1815,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: isDark ? 'rgba(21,29,27,0.92)' : 'rgba(255,255,255,0.7)',
     borderWidth: 1,
     borderColor: palette.border,
   },
@@ -1779,7 +1879,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    backgroundColor: isDark ? 'rgba(25,33,31,0.94)' : 'rgba(255,255,255,0.78)',
     borderWidth: 1,
     borderColor: 'rgba(82, 92, 122, 0.08)',
   },
@@ -1862,7 +1962,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.74)',
+    backgroundColor: isDark ? 'rgba(24,32,30,0.94)' : 'rgba(255,255,255,0.74)',
   },
   statCardPeriod: {
     color: palette.textMuted,
@@ -1885,7 +1985,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    backgroundColor: isDark ? 'rgba(25,33,31,0.94)' : 'rgba(255,255,255,0.78)',
     color: palette.textMuted,
     fontFamily: fonts.body,
     fontSize: 12,
@@ -1910,7 +2010,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.74)',
+    backgroundColor: isDark ? 'rgba(24,32,30,0.94)' : 'rgba(255,255,255,0.74)',
   },
   bestCardTitle: {
     color: palette.text,
@@ -1987,7 +2087,7 @@ const styles = StyleSheet.create({
     borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: isDark ? 'rgba(21,29,27,0.94)' : 'rgba(255,255,255,0.72)',
   },
   emptyTitle: {
     color: palette.text,
@@ -2012,7 +2112,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     paddingHorizontal: 14,
     paddingVertical: 14,
-    backgroundColor: 'rgba(255,255,255,0.68)',
+    backgroundColor: isDark ? 'rgba(21,29,27,0.94)' : 'rgba(255,255,255,0.68)',
     borderWidth: 1,
     borderColor: 'rgba(82, 92, 122, 0.08)',
   },
@@ -2081,9 +2181,9 @@ const styles = StyleSheet.create({
   dayModalCard: {
     borderRadius: 30,
     padding: 20,
-    backgroundColor: '#FFFDFC',
+    backgroundColor: isDark ? '#121918' : '#FFFDFC',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.72)',
+    borderColor: isDark ? 'rgba(223,248,244,0.08)' : 'rgba(255,255,255,0.72)',
     gap: 18,
     shadowColor: '#5B6880',
     shadowOpacity: 0.18,
@@ -2119,7 +2219,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.82)',
+    backgroundColor: isDark ? 'rgba(24,32,30,0.94)' : 'rgba(255,255,255,0.82)',
   },
   dayModalStats: {
     gap: 12,
@@ -2162,9 +2262,9 @@ const styles = StyleSheet.create({
   infoModalCard: {
     borderRadius: 30,
     padding: 20,
-    backgroundColor: '#FFFDFC',
+    backgroundColor: isDark ? '#121918' : '#FFFDFC',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.72)',
+    borderColor: isDark ? 'rgba(223,248,244,0.08)' : 'rgba(255,255,255,0.72)',
     gap: 18,
     shadowColor: '#5B6880',
     shadowOpacity: 0.18,
@@ -2185,7 +2285,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: isDark ? 'rgba(21,29,27,0.94)' : 'rgba(255,255,255,0.72)',
     borderWidth: 1,
     borderColor: 'rgba(82, 92, 122, 0.08)',
   },
@@ -2195,7 +2295,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: isDark ? 'rgba(28,36,34,0.98)' : 'rgba(255,255,255,0.9)',
   },
   infoRowText: {
     flex: 1,
@@ -2212,7 +2312,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: isDark ? 'rgba(21,29,27,0.94)' : 'rgba(255,255,255,0.72)',
     borderWidth: 1,
     borderColor: 'rgba(82, 92, 122, 0.08)',
   },
@@ -2309,7 +2409,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.84)',
+    backgroundColor: isDark ? 'rgba(24,32,30,0.96)' : 'rgba(255,255,255,0.84)',
   },
   undoPressed: {
     opacity: 0.72,
@@ -2331,9 +2431,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 8,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.88)',
+    backgroundColor: isDark ? 'rgba(14,20,19,0.94)' : 'rgba(255,255,255,0.88)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.75)',
+    borderColor: isDark ? 'rgba(223,248,244,0.08)' : 'rgba(255,255,255,0.75)',
     shadowColor: '#6B7892',
     shadowOpacity: 0.16,
     shadowRadius: 22,
@@ -2363,10 +2463,15 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
     minHeight: 44,
     paddingVertical: 8,
     borderRadius: 20,
+  },
+  tabButtonInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+    transform: [{ translateY: -1 }],
   },
   tabButtonPressed: {
     opacity: 0.78,
@@ -2374,6 +2479,8 @@ const styles = StyleSheet.create({
   tabButtonLabel: {
     fontFamily: fonts.body,
     fontSize: 12,
+    lineHeight: 12,
     fontWeight: '700',
   },
-});
+  });
+}
