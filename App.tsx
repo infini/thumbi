@@ -519,7 +519,6 @@ function AppContent() {
               <View style={styles.calendarHeader}>
                 <View>
                   <Text style={styles.calendarTitle}>{formatMonthRange(calendarCursor)}</Text>
-                  <Text style={styles.calendarSubtitle}>월 / 연도 이동 가능</Text>
                 </View>
                 <View style={styles.calendarNav}>
                   <CalendarNavButton
@@ -567,65 +566,39 @@ function AppContent() {
         {activeTab === 'stats' ? (
           <>
             <View style={styles.sectionHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>통계 요약</Text>
-                <Text style={styles.sectionDescription}>
-                  주간, 월간, 분기, 연간 흐름을 한 번에 봅니다.
-                </Text>
-              </View>
-              <View style={styles.sectionChip}>
-                <MaterialCommunityIcons
-                  color={palette.textMuted}
-                  name="chart-bell-curve-cumulative"
-                  size={16}
-                />
-                <Text style={styles.sectionChipText}>집계</Text>
-              </View>
+              <Text style={styles.sectionTitle}>통계</Text>
             </View>
 
             <View style={styles.statsGrid}>
               <StatCard
                 accentColor={getTrendColor(weekSummary.score)}
-                icon="calendar-week"
-                period={formatWeekRange(now)}
+                period={formatCompactWeekRange(now)}
                 summary={weekSummary}
-                title="이번 주"
+                title="주간"
               />
               <StatCard
                 accentColor={getTrendColor(monthSummary.score)}
-                icon="calendar-month"
-                period={formatMonthRange(now)}
+                period={formatCompactMonthRange(now)}
                 summary={monthSummary}
-                title="이번 달"
+                title="월간"
               />
               <StatCard
                 accentColor={getTrendColor(quarterSummary.score)}
-                icon="calendar-range"
-                period={formatQuarterRange(now)}
+                period={formatCompactQuarterRange(now)}
                 summary={quarterSummary}
-                title="이번 분기"
+                title="분기"
               />
               <StatCard
                 accentColor={getTrendColor(yearSummary.score)}
-                icon="calendar"
-                period={formatYearRange(now)}
+                period={formatCompactYearRange(now)}
                 summary={yearSummary}
-                title="올해"
+                title="연간"
               />
             </View>
 
             <View style={styles.sectionHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>최고 기록</Text>
-                <Text style={styles.sectionDescription}>
-                  월, 분기, 년 기준으로 가장 많이 오른 시기와 내린 시기를 봅니다.
-                </Text>
-              </View>
-            <View style={styles.sectionChip}>
-              <MaterialCommunityIcons color={palette.textMuted} name="trophy" size={16} />
-              <Text style={styles.sectionChipText}>최고</Text>
+              <Text style={styles.sectionTitle}>최고 기록</Text>
             </View>
-          </View>
 
             <View style={styles.bestGrid}>
               <BestRecordCard
@@ -816,13 +789,11 @@ function CalendarNavButton({
 
 function StatCard({
   accentColor,
-  icon,
   period,
   summary,
   title,
 }: {
   accentColor: string;
-  icon: IconName;
   period: string;
   summary: VoteSummary;
   title: string;
@@ -838,12 +809,7 @@ function StatCard({
       ]}
     >
       <View style={styles.statCardTop}>
-        <View style={styles.statCardHeader}>
-          <View style={[styles.statCardIcon, { backgroundColor: `${accentColor}18` }]}>
-            <MaterialCommunityIcons color={accentColor} name={icon} size={18} />
-          </View>
-          <Text style={styles.statCardTitle}>{title}</Text>
-        </View>
+        <Text style={styles.statCardTitle}>{title}</Text>
         <View style={styles.statCardPeriodBadge}>
           <Text style={styles.statCardPeriod}>{period}</Text>
         </View>
@@ -1354,6 +1320,29 @@ function getEntrySoft(kind: VoteKind): string {
   return kind === 'up' ? palette.riseSoft : palette.fallSoft;
 }
 
+function formatCompactWeekRange(referenceDate: Date): string {
+  const start = new Date(referenceDate);
+  const day = start.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + offset);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  return `${start.getMonth() + 1}.${start.getDate()}-${end.getMonth() + 1}.${end.getDate()}`;
+}
+
+function formatCompactMonthRange(referenceDate: Date): string {
+  return `${referenceDate.getFullYear()}.${String(referenceDate.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatCompactQuarterRange(referenceDate: Date): string {
+  return `${referenceDate.getFullYear()} Q${Math.floor(referenceDate.getMonth() / 3) + 1}`;
+}
+
+function formatCompactYearRange(referenceDate: Date): string {
+  return `${referenceDate.getFullYear()}`;
+}
+
 function getRecentRecordGroups(entries: VoteEntry[]): RecentRecordGroup[] {
   const groups: RecentRecordGroup[] = [];
 
@@ -1657,7 +1646,8 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    rowGap: 12,
+    columnGap: 10,
     justifyContent: 'space-between',
   },
   bestGrid: {
@@ -1760,41 +1750,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   statCard: {
-    width: '48.2%',
-    minHeight: 148,
+    width: '48%',
+    minHeight: 138,
     borderRadius: 22,
-    padding: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
     borderWidth: 1,
     gap: 12,
   },
   statCardTop: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
-  },
-  statCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  statCardIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
   },
   statCardTitle: {
     color: palette.text,
     fontFamily: fonts.display,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   statCardPeriodBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.74)',
   },
@@ -1806,7 +1784,7 @@ const styles = StyleSheet.create({
   },
   statCardScore: {
     fontFamily: fonts.display,
-    fontSize: 34,
+    fontSize: 31,
     fontWeight: '800',
   },
   statCardDetails: {
