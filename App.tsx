@@ -9,7 +9,9 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import {
+  Animated,
   Alert,
+  Easing,
   Modal,
   PanResponder,
   Pressable,
@@ -55,6 +57,8 @@ const REPEAT_INTERVAL_MS = 1000;
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 const TAB_BAR_HEIGHT = 76;
 const TAB_ORDER: TabKey[] = ['home', 'calendar', 'stats'];
+const TAB_SWIPE_THRESHOLD = 72;
+const TAB_ANIMATION_OFFSET = 68;
 
 interface PendingUndoAction {
   entries: VoteEntry[];
@@ -92,6 +96,10 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [calendarCursor, setCalendarCursor] = useState(() => new Date());
+  const scrollViewRef = useRef<ScrollView | null>(null);
+  const contentTranslateX = useRef(new Animated.Value(0)).current;
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+  const isTabAnimatingRef = useRef(false);
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const skipNextPressRef = useRef(false);
   const holdBatchEntriesRef = useRef<VoteEntry[]>([]);
@@ -185,12 +193,96 @@ function AppContent() {
     : palette.text;
   const scrollBottomPadding = TAB_BAR_HEIGHT + insets.bottom + 72;
 
+  function getTabIndex(tab: TabKey): number {
+    return TAB_ORDER.indexOf(tab);
+  }
+
+  function animateTabBack() {
+    Animated.parallel([
+      Animated.spring(contentTranslateX, {
+        toValue: 0,
+        damping: 18,
+        stiffness: 180,
+        mass: 0.85,
+        useNativeDriver: true,
+      }),
+      Animated.timing(contentOpacity, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }
+
+  function changeTab(nextTab: TabKey) {
+    if (nextTab === activeTab || isTabAnimatingRef.current) {
+      animateTabBack();
+      return;
+    }
+
+    const currentIndex = getTabIndex(activeTab);
+    const nextIndex = getTabIndex(nextTab);
+    const exitOffset = nextIndex > currentIndex ? -TAB_ANIMATION_OFFSET : TAB_ANIMATION_OFFSET;
+    const enterOffset = -exitOffset;
+
+    isTabAnimatingRef.current = true;
+
+    Animated.parallel([
+      Animated.timing(contentTranslateX, {
+        toValue: exitOffset,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(contentOpacity, {
+        toValue: 0.6,
+        duration: 140,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+      setActiveTab(nextTab);
+      contentTranslateX.setValue(enterOffset);
+      contentOpacity.setValue(0.68);
+
+      Animated.parallel([
+        Animated.spring(contentTranslateX, {
+          toValue: 0,
+          damping: 18,
+          stiffness: 180,
+          mass: 0.85,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentOpacity, {
+          toValue: 1,
+          duration: 210,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        isTabAnimatingRef.current = false;
+      });
+    });
+  }
+
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: (_, gestureState) =>
+      !isTabAnimatingRef.current &&
       Math.abs(gestureState.dx) > 24 &&
       Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2,
+    onPanResponderMove: (_, gestureState) => {
+      if (isTabAnimatingRef.current) {
+        return;
+      }
+
+      contentTranslateX.setValue(gestureState.dx * 0.42);
+      contentOpacity.setValue(Math.max(0.78, 1 - Math.abs(gestureState.dx) / 320));
+    },
     onPanResponderRelease: (_, gestureState) => {
-      if (Math.abs(gestureState.dx) < 72) {
+      if (Math.abs(gestureState.dx) < TAB_SWIPE_THRESHOLD) {
+        animateTabBack();
         return;
       }
 
@@ -199,10 +291,14 @@ function AppContent() {
         gestureState.dx < 0 ? currentIndex + 1 : currentIndex - 1;
 
       if (nextIndex < 0 || nextIndex >= TAB_ORDER.length) {
+        animateTabBack();
         return;
       }
 
-      setActiveTab(TAB_ORDER[nextIndex]);
+      changeTab(TAB_ORDER[nextIndex]);
+    },
+    onPanResponderTerminate: () => {
+      animateTabBack();
     },
   });
 
@@ -391,12 +487,22 @@ function AppContent() {
           </View>
         </View>
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {activeTab === 'home' ? (
-            <>
+          <Animated.View
+            style={[
+              styles.tabContent,
+              {
+                opacity: contentOpacity,
+                transform: [{ translateX: contentTranslateX }],
+              },
+            ]}
+          >
+            {activeTab === 'home' ? (
+              <>
             <LinearGradient
               colors={['#E8FBF6', '#FFFFFF', '#EEF5F3']}
               end={{ x: 1, y: 1 }}
@@ -511,11 +617,11 @@ function AppContent() {
                 </View>
               )}
             </View>
-            </>
-          ) : null}
+              </>
+            ) : null}
 
-          {activeTab === 'calendar' ? (
-            <>
+            {activeTab === 'calendar' ? (
+              <>
             <View style={styles.sectionHeader}>
               <View>
                 <Text style={styles.sectionTitle}>월간 달력</Text>
@@ -570,11 +676,11 @@ function AppContent() {
                 )}
               </View>
             </View>
-            </>
-          ) : null}
+              </>
+            ) : null}
 
-          {activeTab === 'stats' ? (
-            <>
+            {activeTab === 'stats' ? (
+              <>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>통계</Text>
             </View>
@@ -627,14 +733,15 @@ function AppContent() {
                 title="연간 최고"
               />
             </View>
-            </>
-          ) : null}
+              </>
+            ) : null}
+          </Animated.View>
         </ScrollView>
       </View>
       <BottomTabBar
         activeTab={activeTab}
         bottomInset={insets.bottom}
-        onChange={setActiveTab}
+        onChange={changeTab}
       />
       {pendingUndoAction ? (
         <UndoSnackbar
@@ -1413,6 +1520,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 24,
+    gap: 18,
+  },
+  tabContent: {
     gap: 18,
   },
   topBarShell: {
