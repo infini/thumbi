@@ -11,6 +11,7 @@ import {
 import {
   Alert,
   Modal,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -53,6 +54,7 @@ const REPEAT_STEP = 5;
 const REPEAT_INTERVAL_MS = 1000;
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 const TAB_BAR_HEIGHT = 76;
+const TAB_ORDER: TabKey[] = ['home', 'calendar', 'stats'];
 
 interface PendingUndoAction {
   entries: VoteEntry[];
@@ -182,6 +184,27 @@ function AppContent() {
     ? getTrendColor(selectedDaySummary.score)
     : palette.text;
   const scrollBottomPadding = TAB_BAR_HEIGHT + insets.bottom + 72;
+
+  const panResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gestureState) =>
+      Math.abs(gestureState.dx) > 24 &&
+      Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2,
+    onPanResponderRelease: (_, gestureState) => {
+      if (Math.abs(gestureState.dx) < 72) {
+        return;
+      }
+
+      const currentIndex = TAB_ORDER.indexOf(activeTab);
+      const nextIndex =
+        gestureState.dx < 0 ? currentIndex + 1 : currentIndex - 1;
+
+      if (nextIndex < 0 || nextIndex >= TAB_ORDER.length) {
+        return;
+      }
+
+      setActiveTab(TAB_ORDER[nextIndex]);
+    },
+  });
 
   function handleAddEntry(kind: VoteKind) {
     if (skipNextPressRef.current) {
@@ -338,41 +361,42 @@ function AppContent() {
         <View style={[styles.orb, styles.orbFall]} />
         <View style={[styles.orb, styles.orbSun]} />
       </View>
-      <View style={styles.topBarShell}>
-        <View style={styles.topBar}>
-          <View style={styles.brandBadge}>
-            <View style={styles.brandIcon}>
-              <MaterialCommunityIcons
-                color={palette.brand}
-                name="thumb-up-outline"
-                size={18}
-              />
+      <View style={styles.contentShell} {...panResponder.panHandlers}>
+        <View style={styles.topBarShell}>
+          <View style={styles.topBar}>
+            <View style={styles.brandBadge}>
+              <View style={styles.brandIcon}>
+                <MaterialCommunityIcons
+                  color={palette.brand}
+                  name="thumb-up-outline"
+                  size={18}
+                />
+              </View>
+              <Text style={styles.brandText}>All We Experience</Text>
+              <Pressable
+                hitSlop={8}
+                onPress={() => setIsInfoOpen(true)}
+                style={({ pressed }) => [
+                  styles.brandInfoButton,
+                  pressed && styles.brandInfoPressed,
+                ]}
+              >
+                <MaterialCommunityIcons
+                  color={palette.textMuted}
+                  name="information-outline"
+                  size={16}
+                />
+              </Pressable>
             </View>
-            <Text style={styles.brandText}>All We Experience</Text>
-            <Pressable
-              hitSlop={8}
-              onPress={() => setIsInfoOpen(true)}
-              style={({ pressed }) => [
-                styles.brandInfoButton,
-                pressed && styles.brandInfoPressed,
-              ]}
-            >
-              <MaterialCommunityIcons
-                color={palette.textMuted}
-                name="information-outline"
-                size={16}
-              />
-            </Pressable>
           </View>
         </View>
-      </View>
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {activeTab === 'home' ? (
-          <>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {activeTab === 'home' ? (
+            <>
             <LinearGradient
               colors={['#E8FBF6', '#FFFFFF', '#EEF5F3']}
               end={{ x: 1, y: 1 }}
@@ -463,14 +487,6 @@ function AppContent() {
                     가장 최근에 남긴 {recentEntries.length}개의 액션입니다.
                   </Text>
                 </View>
-                <View style={styles.sectionChip}>
-                  <MaterialCommunityIcons
-                    color={palette.textMuted}
-                    name="history"
-                    size={16}
-                  />
-                  <Text style={styles.sectionChipText}>{entries.length}개 저장</Text>
-                </View>
               </View>
 
               {!isHydrated ? (
@@ -495,11 +511,11 @@ function AppContent() {
                 </View>
               )}
             </View>
-          </>
-        ) : null}
+            </>
+          ) : null}
 
-        {activeTab === 'calendar' ? (
-          <>
+          {activeTab === 'calendar' ? (
+            <>
             <View style={styles.sectionHeader}>
               <View>
                 <Text style={styles.sectionTitle}>월간 달력</Text>
@@ -554,11 +570,11 @@ function AppContent() {
                 )}
               </View>
             </View>
-          </>
-        ) : null}
+            </>
+          ) : null}
 
-        {activeTab === 'stats' ? (
-          <>
+          {activeTab === 'stats' ? (
+            <>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>통계</Text>
             </View>
@@ -611,9 +627,10 @@ function AppContent() {
                 title="연간 최고"
               />
             </View>
-          </>
-        ) : null}
-      </ScrollView>
+            </>
+          ) : null}
+        </ScrollView>
+      </View>
       <BottomTabBar
         activeTab={activeTab}
         bottomInset={insets.bottom}
@@ -1359,6 +1376,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: palette.background,
+  },
+  contentShell: {
+    flex: 1,
   },
   backgroundOrbs: {
     ...StyleSheet.absoluteFillObject,
