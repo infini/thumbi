@@ -63,10 +63,10 @@
     <circle cx="718" cy="304" r="58" fill="url(#riseBadge)"/>
   </g>
 
-  <path d="M292 686L314 708L328 694L356 722" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M338 722H356V704" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M682 324L702 304L716 318L740 292" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M724 292H740V308" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M348 690L328 710L314 696L282 728" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M300 728H282V710" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M676 330L700 306L716 322L752 286" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M732 286H752V306" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
 
   <path d="M350 260L382 294H362L378 332L336 294H354L350 260Z" fill="url(#boltGrad)"/>
 </svg>

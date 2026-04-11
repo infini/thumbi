@@ -91,6 +91,7 @@ export default function App() {
   const weekSummary = getWeekSummary(entries, now);
   const monthSummary = getMonthSummary(entries, now);
   const recentEntries = entries.slice(0, 6);
+  const todayScoreColor = getTrendColor(todaySummary.score);
 
   function handleAddEntry(kind: VoteKind) {
     const nextEntry = createVoteEntry(kind, draftNote.trim());
@@ -124,9 +125,9 @@ export default function App() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <View pointerEvents="none" style={styles.backgroundOrbs}>
-        <View style={[styles.orb, styles.orbPeach]} />
-        <View style={[styles.orb, styles.orbMint]} />
-        <View style={[styles.orb, styles.orbSky]} />
+        <View style={[styles.orb, styles.orbRise]} />
+        <View style={[styles.orb, styles.orbFall]} />
+        <View style={[styles.orb, styles.orbSun]} />
       </View>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -137,8 +138,8 @@ export default function App() {
           <View style={styles.brandBadge}>
             <View style={styles.brandIcon}>
               <MaterialCommunityIcons
-                color={palette.text}
-                name="thumb-up-outline"
+                color={palette.rise}
+                name="chart-line-variant"
                 size={18}
               />
             </View>
@@ -150,7 +151,7 @@ export default function App() {
         </View>
 
         <LinearGradient
-          colors={['#FFF5E9', '#F6FBF7', '#EEF4FF']}
+          colors={['#FFF1F4', '#FFFFFF', '#EEF4FF']}
           end={{ x: 1, y: 1 }}
           start={{ x: 0, y: 0 }}
           style={styles.heroCard}
@@ -164,25 +165,35 @@ export default function App() {
                 있어요.
               </Text>
             </View>
-            <View style={styles.scoreBubble}>
+            <View
+              style={[
+                styles.scoreBubble,
+                {
+                  backgroundColor: getTrendSoft(todaySummary.score),
+                  borderColor: `${todayScoreColor}28`,
+                },
+              ]}
+            >
               <Text style={styles.scoreLabel}>오늘 점수</Text>
-              <Text style={styles.scoreValue}>{formatScore(todaySummary.score)}</Text>
+              <Text style={[styles.scoreValue, { color: todayScoreColor }]}>
+                {formatScore(todaySummary.score)}
+              </Text>
             </View>
           </View>
 
           <View style={styles.metricRow}>
             <MetricPill
-              accentColor={palette.positive}
-              backgroundColor={palette.positiveSoft}
-              icon="thumb-up"
-              label="엄지 업"
+              accentColor={palette.rise}
+              backgroundColor={palette.riseSoft}
+              icon="arrow-top-right-thick"
+              label="상승 기록"
               value={todaySummary.upCount}
             />
             <MetricPill
-              accentColor={palette.negative}
-              backgroundColor={palette.negativeSoft}
-              icon="thumb-down"
-              label="엄지 다운"
+              accentColor={palette.fall}
+              backgroundColor={palette.fallSoft}
+              icon="arrow-bottom-left-thick"
+              label="하락 기록"
               value={todaySummary.downCount}
             />
           </View>
@@ -202,20 +213,24 @@ export default function App() {
 
           <View style={styles.actionRow}>
             <ActionButton
-              colors={['#C9F6D7', '#84DDA3']}
-              icon="thumb-up"
+              colors={['#FFD8DE', '#FF8B98']}
+              icon="arrow-top-right-thick"
               label="엄지 업"
               onPress={() => handleAddEntry('up')}
-              subtitle="칭찬 기록하기"
-              textColor={palette.text}
+              subtitle="빨간 상승으로 기록"
+              iconColor={palette.rise}
+              labelColor="#8F223B"
+              subtitleColor="#B54E64"
             />
             <ActionButton
-              colors={['#FFD9CF', '#F2A38D']}
-              icon="thumb-down"
+              colors={['#DDEBFF', '#8EBEFF']}
+              icon="arrow-bottom-left-thick"
               label="엄지 다운"
               onPress={() => handleAddEntry('down')}
-              subtitle="주의 기록하기"
-              textColor={palette.text}
+              subtitle="파란 하락으로 기록"
+              iconColor={palette.fall}
+              labelColor="#1F4F89"
+              subtitleColor="#517AB2"
             />
           </View>
         </LinearGradient>
@@ -239,14 +254,14 @@ export default function App() {
 
         <View style={styles.statsGrid}>
           <StatCard
-            accentColor={palette.positive}
+            accentColor={getTrendColor(weekSummary.score)}
             icon="calendar-week"
             period={formatWeekRange(now)}
             summary={weekSummary}
             title="이번 주"
           />
           <StatCard
-            accentColor={palette.gold}
+            accentColor={getTrendColor(monthSummary.score)}
             icon="calendar-month"
             period={formatMonthRange(now)}
             summary={monthSummary}
@@ -278,8 +293,8 @@ export default function App() {
             <View style={styles.emptyState}>
               <View style={styles.emptyStateIcon}>
                 <MaterialCommunityIcons
-                  color={palette.textMuted}
-                  name="star-four-points-outline"
+                  color={palette.rise}
+                  name="chart-line-variant"
                   size={24}
                 />
               </View>
@@ -321,7 +336,7 @@ function MetricPill({
       </View>
       <View style={styles.metricPillCopy}>
         <Text style={styles.metricPillLabel}>{label}</Text>
-        <Text style={styles.metricPillValue}>{value}</Text>
+        <Text style={[styles.metricPillValue, { color: accentColor }]}>{value}</Text>
       </View>
     </View>
   );
@@ -333,14 +348,18 @@ function ActionButton({
   label,
   onPress,
   subtitle,
-  textColor,
+  iconColor,
+  labelColor,
+  subtitleColor,
 }: {
   colors: readonly [string, string];
   icon: IconName;
   label: string;
   onPress: () => void;
   subtitle: string;
-  textColor: string;
+  iconColor: string;
+  labelColor: string;
+  subtitleColor: string;
 }) {
   return (
     <Pressable
@@ -357,10 +376,12 @@ function ActionButton({
         style={styles.actionButton}
       >
         <View style={styles.actionButtonIcon}>
-          <MaterialCommunityIcons color={textColor} name={icon} size={26} />
+          <MaterialCommunityIcons color={iconColor} name={icon} size={28} />
         </View>
-        <Text style={styles.actionButtonLabel}>{label}</Text>
-        <Text style={styles.actionButtonSubtitle}>{subtitle}</Text>
+        <Text style={[styles.actionButtonLabel, { color: labelColor }]}>{label}</Text>
+        <Text style={[styles.actionButtonSubtitle, { color: subtitleColor }]}>
+          {subtitle}
+        </Text>
       </LinearGradient>
     </Pressable>
   );
@@ -380,7 +401,15 @@ function StatCard({
   title: string;
 }) {
   return (
-    <View style={styles.statCard}>
+    <View
+      style={[
+        styles.statCard,
+        {
+          borderColor: `${accentColor}20`,
+          backgroundColor: getTrendSurface(summary.score),
+        },
+      ]}
+    >
       <View style={styles.statCardHeader}>
         <View style={[styles.statCardIcon, { backgroundColor: `${accentColor}18` }]}>
           <MaterialCommunityIcons color={accentColor} name={icon} size={20} />
@@ -391,11 +420,13 @@ function StatCard({
         </View>
       </View>
 
-      <Text style={styles.statCardScore}>{formatScore(summary.score)}</Text>
+      <Text style={[styles.statCardScore, { color: accentColor }]}>
+        {formatScore(summary.score)}
+      </Text>
 
       <View style={styles.statCardDetails}>
-        <Text style={styles.statDetail}>업 {summary.upCount}</Text>
-        <Text style={styles.statDetail}>다운 {summary.downCount}</Text>
+        <Text style={[styles.statDetail, { color: palette.rise }]}>상승 {summary.upCount}</Text>
+        <Text style={[styles.statDetail, { color: palette.fall }]}>하락 {summary.downCount}</Text>
         <Text style={styles.statDetail}>총 {summary.total}</Text>
       </View>
     </View>
@@ -409,17 +440,24 @@ function EntryRow({
   entry: VoteEntry;
   onDelete: (entry: VoteEntry) => void;
 }) {
-  const accentColor = entry.kind === 'up' ? palette.positive : palette.negative;
-  const backgroundColor =
-    entry.kind === 'up' ? palette.positiveSoft : palette.negativeSoft;
+  const accentColor = getEntryAccent(entry.kind);
+  const backgroundColor = getEntrySoft(entry.kind);
   const title = entry.note || (entry.kind === 'up' ? '칭찬 기록' : '주의 기록');
 
   return (
-    <View style={styles.entryRow}>
+    <View
+      style={[
+        styles.entryRow,
+        {
+          backgroundColor: `${accentColor}0F`,
+          borderColor: `${accentColor}1F`,
+        },
+      ]}
+    >
       <View style={[styles.entryIcon, { backgroundColor }]}>
         <MaterialCommunityIcons
           color={accentColor}
-          name={entry.kind === 'up' ? 'thumb-up' : 'thumb-down'}
+          name={entry.kind === 'up' ? 'arrow-top-right-thick' : 'arrow-bottom-left-thick'}
           size={18}
         />
       </View>
@@ -440,6 +478,50 @@ function EntryRow({
   );
 }
 
+function getTrendColor(score: number): string {
+  if (score > 0) {
+    return palette.rise;
+  }
+
+  if (score < 0) {
+    return palette.fall;
+  }
+
+  return palette.text;
+}
+
+function getTrendSoft(score: number): string {
+  if (score > 0) {
+    return palette.riseSoft;
+  }
+
+  if (score < 0) {
+    return palette.fallSoft;
+  }
+
+  return 'rgba(255,255,255,0.82)';
+}
+
+function getTrendSurface(score: number): string {
+  if (score > 0) {
+    return 'rgba(255, 93, 112, 0.07)';
+  }
+
+  if (score < 0) {
+    return 'rgba(93, 168, 255, 0.08)';
+  }
+
+  return palette.panel;
+}
+
+function getEntryAccent(kind: VoteKind): string {
+  return kind === 'up' ? palette.rise : palette.fall;
+}
+
+function getEntrySoft(kind: VoteKind): string {
+  return kind === 'up' ? palette.riseSoft : palette.fallSoft;
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -453,26 +535,26 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     opacity: 0.85,
   },
-  orbPeach: {
+  orbRise: {
     top: -80,
     right: -40,
     width: 220,
     height: 220,
-    backgroundColor: palette.peach,
+    backgroundColor: palette.riseGlow,
   },
-  orbMint: {
+  orbFall: {
     top: 280,
     left: -70,
     width: 180,
     height: 180,
-    backgroundColor: palette.mint,
+    backgroundColor: palette.fallGlow,
   },
-  orbSky: {
+  orbSun: {
     right: -30,
     bottom: 100,
     width: 190,
     height: 190,
-    backgroundColor: palette.sky,
+    backgroundColor: palette.cream,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -522,7 +604,7 @@ const styles = StyleSheet.create({
     gap: 18,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.6)',
-    shadowColor: '#B86B38',
+    shadowColor: '#7B8BB0',
     shadowOpacity: 0.12,
     shadowRadius: 24,
     shadowOffset: {
@@ -579,7 +661,6 @@ const styles = StyleSheet.create({
   },
   scoreValue: {
     marginTop: 4,
-    color: palette.text,
     fontFamily: fonts.display,
     fontSize: 28,
     fontWeight: '800',
@@ -672,17 +753,15 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.55)',
+    backgroundColor: 'rgba(255,255,255,0.72)',
   },
   actionButtonLabel: {
     marginTop: 18,
-    color: palette.text,
     fontFamily: fonts.display,
     fontSize: 21,
     fontWeight: '700',
   },
   actionButtonSubtitle: {
-    color: palette.textMuted,
     fontFamily: fonts.body,
     fontSize: 13,
     fontWeight: '600',
@@ -729,9 +808,7 @@ const styles = StyleSheet.create({
   statCard: {
     borderRadius: 28,
     padding: 20,
-    backgroundColor: palette.panel,
     borderWidth: 1,
-    borderColor: palette.border,
     gap: 18,
   },
   statCardHeader: {
@@ -760,7 +837,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   statCardScore: {
-    color: palette.text,
     fontFamily: fonts.display,
     fontSize: 42,
     fontWeight: '800',

@@ -88,10 +88,10 @@
     <circle cx="732" cy="286" r="64" fill="url(#riseBadge)"/>
   </g>
 
-  <path d="M250 694L274 718L290 702L322 734" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M300 734H322V712" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M692 310L714 288L730 304L756 278" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M736 278H756V298" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M322 706L300 728L284 712L248 748" stroke="white" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M270 748H248V726" stroke="white" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M686 320L712 294L730 312L772 270" stroke="white" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M748 270H772V294" stroke="white" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
 
   <path d="M318 256L354 294H332L350 338L302 294H324L318 256Z" fill="url(#boltGrad)"/>
   <circle cx="386" cy="234" r="10" fill="white" fill-opacity="0.96"/>

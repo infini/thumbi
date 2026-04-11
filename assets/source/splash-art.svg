@@ -48,13 +48,12 @@
     <text x="512" y="474" text-anchor="middle" fill="#111111" font-family="Apple Color Emoji, sans-serif" font-size="172">👍</text>
   </g>
 
-  <circle cx="404" cy="506" r="36" fill="#78DB9F"/>
   <circle cx="404" cy="506" r="36" fill="#61AFFF"/>
   <circle cx="616" cy="304" r="32" fill="#FF6173"/>
-  <path d="M386 494L398 506L406 498L422 514" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M412 514H422V504" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M600 316L612 304L620 312L634 298" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M622 298H634V310" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M422 492L412 502L404 494L386 512" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M398 512H386V500" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M598 316L612 302L622 312L646 288" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M632 288H646V302" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M392 258L416 284H402L414 314L382 284H396L392 258Z" fill="#FFD46C"/>
 
   <text x="512" y="742" text-anchor="middle" fill="#253046" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="88" font-weight="700">Thumbi</text>

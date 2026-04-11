@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 export const palette = {
-  background: '#FFF8EF',
+  background: '#FFF8F4',
   backgroundAccent: '#EEF6FF',
   panel: 'rgba(255, 255, 255, 0.76)',
   panelStrong: '#FFFFFF',
@@ -9,15 +9,14 @@ export const palette = {
   text: '#253046',
   textMuted: '#71809A',
   textSoft: '#94A1B4',
-  positive: '#5CBC84',
-  positiveSoft: '#E2F8EA',
-  negative: '#EB8E79',
-  negativeSoft: '#FFE7DF',
-  peach: '#FFD8C6',
-  mint: '#CBF1DA',
-  sky: '#DCEBFF',
+  rise: '#FF5D70',
+  riseSoft: '#FFE7EB',
+  riseGlow: '#FFC9D1',
+  fall: '#5DA8FF',
+  fallSoft: '#E7F1FF',
+  fallGlow: '#CFE1FF',
   cream: '#FFF3D9',
-  gold: '#FFBE6D',
+  sun: '#FFD46C',
 } as const;
 
 export const fonts = {
