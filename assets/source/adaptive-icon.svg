@@ -1,0 +1,39 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="panel" x1="280" y1="224" x2="770" y2="774" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="white" stop-opacity="0.56"/>
+    </linearGradient>
+    <linearGradient id="mintBubble" x1="304" y1="650" x2="418" y2="766" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C8F6D7"/>
+      <stop offset="1" stop-color="#86DCA3"/>
+    </linearGradient>
+    <linearGradient id="peachBubble" x1="660" y1="284" x2="768" y2="382" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD9CE"/>
+      <stop offset="1" stop-color="#F1A089"/>
+    </linearGradient>
+    <filter id="panelShadow" x="212" y="192" width="600" height="622" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#7B8AA6" flood-opacity="0.16"/>
+    </filter>
+    <filter id="bubbleShadow" x="258" y="258" width="556" height="564" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#8994AB" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#panelShadow)">
+    <rect x="248" y="226" width="528" height="528" rx="164" fill="url(#panel)"/>
+    <rect x="248.5" y="226.5" width="527" height="527" rx="163.5" stroke="white" stroke-opacity="0.64"/>
+    <ellipse cx="512" cy="294" rx="182" ry="84" fill="white" fill-opacity="0.38"/>
+  </g>
+
+  <g filter="url(#bubbleShadow)">
+    <circle cx="348" cy="700" r="60" fill="url(#mintBubble)"/>
+    <circle cx="714" cy="334" r="54" fill="url(#peachBubble)"/>
+  </g>
+
+  <path d="M348 674V726" stroke="white" stroke-width="16" stroke-linecap="round"/>
+  <path d="M322 700H374" stroke="white" stroke-width="16" stroke-linecap="round"/>
+  <path d="M688 334H740" stroke="white" stroke-width="14" stroke-linecap="round"/>
+
+  <text x="512" y="582" text-anchor="middle" fill="#111111" font-family="Apple Color Emoji, sans-serif" font-size="272">👍</text>
+</svg>

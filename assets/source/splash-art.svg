@@ -1,0 +1,37 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#FFF5E6"/>
+      <stop offset="0.5" stop-color="#E7F6EA"/>
+      <stop offset="1" stop-color="#DEEAFE"/>
+    </linearGradient>
+    <radialGradient id="topGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(280 248) rotate(45) scale(248)">
+      <stop stop-color="#FFC9B6"/>
+      <stop offset="1" stop-color="#FFC9B6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="tileShadow" x="250" y="136" width="524" height="552" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#7B8AA6" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <rect x="286" y="168" width="452" height="452" rx="120" fill="url(#bg)"/>
+  <rect x="286" y="168" width="452" height="452" rx="120" fill="url(#topGlow)"/>
+  <rect x="286.5" y="168.5" width="451" height="451" rx="119.5" stroke="white" stroke-opacity="0.48"/>
+
+  <g filter="url(#tileShadow)">
+    <rect x="366" y="248" width="292" height="292" rx="92" fill="white" fill-opacity="0.56"/>
+    <rect x="366.5" y="248.5" width="291" height="291" rx="91.5" stroke="white" stroke-opacity="0.6"/>
+    <ellipse cx="512" cy="292" rx="104" ry="46" fill="white" fill-opacity="0.38"/>
+  </g>
+
+  <circle cx="430" cy="502" r="38" fill="#86DCA3"/>
+  <circle cx="616" cy="300" r="34" fill="#F1A089"/>
+  <path d="M430 480V524" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M408 502H452" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M594 300H638" stroke="white" stroke-width="10" stroke-linecap="round"/>
+
+  <text x="512" y="450" text-anchor="middle" fill="#111111" font-family="Apple Color Emoji, sans-serif" font-size="154">👍</text>
+
+  <text x="512" y="742" text-anchor="middle" fill="#253046" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="88" font-weight="700">Thumbi</text>
+  <text x="512" y="804" text-anchor="middle" fill="#71809A" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="600" letter-spacing="2">daily thumbs and tally</text>
+</svg>
