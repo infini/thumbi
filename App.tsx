@@ -343,12 +343,12 @@ function AppContent() {
           <View style={styles.brandBadge}>
             <View style={styles.brandIcon}>
               <MaterialCommunityIcons
-                color={palette.rise}
-                name="chart-line-variant"
+                color={palette.brand}
+                name="thumb-up-outline"
                 size={18}
               />
             </View>
-            <Text style={styles.brandText}>Thumbi</Text>
+            <Text style={styles.brandText}>All We Experience</Text>
             <Pressable
               hitSlop={8}
               onPress={() => setIsInfoOpen(true)}
@@ -374,7 +374,7 @@ function AppContent() {
         {activeTab === 'home' ? (
           <>
             <LinearGradient
-              colors={['#FFF1F4', '#FFFFFF', '#EEF4FF']}
+              colors={['#E8FBF6', '#FFFFFF', '#EEF5F3']}
               end={{ x: 1, y: 1 }}
               start={{ x: 0, y: 0 }}
               style={styles.heroCard}
@@ -431,20 +431,20 @@ function AppContent() {
 
               <View style={styles.actionRow}>
                 <ActionButton
-                  colors={['#FFD8DE', '#FF8B98']}
+                  colors={['#D7FAF4', '#92E5D9']}
                   icon="arrow-top-right-thick"
                   kind="up"
                   label="엄지 업"
                   onLongPress={handleRepeatStart}
                   onPressOut={stopRepeatInput}
                   onPress={() => handleAddEntry('up')}
-                  subtitle="빨간 상승으로 기록"
+                  subtitle="민트 톤으로 기록"
                   iconColor={palette.rise}
-                  labelColor="#8F223B"
-                  subtitleColor="#B54E64"
+                  labelColor="#0F5B54"
+                  subtitleColor="#4D7C76"
                 />
                 <ActionButton
-                  colors={['#DDEBFF', '#8EBEFF']}
+                  colors={['#E4F0FB', '#AACFF0']}
                   icon="arrow-bottom-left-thick"
                   kind="down"
                   label="엄지 다운"
@@ -483,8 +483,8 @@ function AppContent() {
                 <View style={styles.emptyState}>
                   <View style={styles.emptyStateIcon}>
                     <MaterialCommunityIcons
-                      color={palette.rise}
-                      name="chart-line-variant"
+                      color={palette.brand}
+                      name="thumb-up-outline"
                       size={24}
                     />
                   </View>
@@ -982,7 +982,7 @@ function BottomTabBar({
     <View style={[styles.tabBarWrap, { paddingBottom: Math.max(bottomInset, 12) }]}>
       <View style={styles.tabBar}>
         <TabBarButton
-          accentColor={palette.rise}
+          accentColor={palette.brand}
           active={activeTab === 'home'}
           icon="thumb-up-outline"
           label="업다운"
@@ -1021,7 +1021,7 @@ function InfoModal({
         <View style={styles.infoModalCard}>
           <View style={styles.dayModalHeader}>
             <View>
-              <Text style={styles.dayModalTitle}>Thumbi</Text>
+              <Text style={styles.dayModalTitle}>All We Experience</Text>
               <Text style={styles.dayModalDate}>간단한 기록과 통계를 위한 앱</Text>
             </View>
             <Pressable onPress={onClose} style={styles.dayModalClose}>
@@ -1420,8 +1420,8 @@ const styles = StyleSheet.create({
   brandBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
+    gap: 8,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.72)',
@@ -1439,7 +1439,7 @@ const styles = StyleSheet.create({
   brandText: {
     color: palette.text,
     fontFamily: fonts.display,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   brandInfoButton: {

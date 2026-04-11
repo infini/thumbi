@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Thumbi",
-    "slug": "thumbi",
+    "name": "All We Experience",
+    "slug": "all-we-experience",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFF8EF"
+      "backgroundColor": "#090C0B"
     },
     "ios": {
       "supportsTablet": true
@@ -19,7 +19,7 @@
       "package": "com.infini.thumbi",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFF8EF"
+        "backgroundColor": "#090C0B"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false

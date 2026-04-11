@@ -1,72 +1,16 @@
-<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="backCard" x1="338" y1="250" x2="742" y2="676" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF7FB" stop-opacity="0.96"/>
-      <stop offset="1" stop-color="#D8E9FF" stop-opacity="0.94"/>
-    </linearGradient>
-    <linearGradient id="frontCard" x1="252" y1="254" x2="780" y2="788" gradientUnits="userSpaceOnUse">
-      <stop stop-color="white" stop-opacity="0.98"/>
-      <stop offset="1" stop-color="#F4F8FF" stop-opacity="0.84"/>
-    </linearGradient>
-    <linearGradient id="ring" x1="408" y1="364" x2="640" y2="608" gradientUnits="userSpaceOnUse">
-      <stop stop-color="white" stop-opacity="0.86"/>
-      <stop offset="1" stop-color="white" stop-opacity="0.24"/>
-    </linearGradient>
-    <linearGradient id="fallBadge" x1="270" y1="654" x2="414" y2="796" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#D9EEFF"/>
-      <stop offset="1" stop-color="#5DA8FF"/>
-    </linearGradient>
-    <linearGradient id="riseBadge" x1="634" y1="244" x2="784" y2="382" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFD6D9"/>
-      <stop offset="1" stop-color="#FF5D70"/>
-    </linearGradient>
-    <linearGradient id="boltGrad" x1="324" y1="248" x2="386" y2="338" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF6C7"/>
-      <stop offset="1" stop-color="#FFC55C"/>
-    </linearGradient>
-    <filter id="cardShadow" x="194" y="170" width="650" height="686" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="22" stdDeviation="22" flood-color="#7183A0" flood-opacity="0.16"/>
-    </filter>
-    <filter id="badgeShadow" x="198" y="200" width="644" height="626" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#8090AA" flood-opacity="0.16"/>
-    </filter>
-    <filter id="softGlow" x="356" y="316" width="316" height="316" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feGaussianBlur stdDeviation="18"/>
-    </filter>
+    <clipPath id="tile">
+      <rect x="116" y="116" width="792" height="792" rx="178"/>
+    </clipPath>
   </defs>
-
-  <g filter="url(#cardShadow)">
-    <g transform="rotate(8 560 446)">
-      <rect x="342" y="262" width="344" height="344" rx="108" fill="url(#backCard)"/>
-      <rect x="342.5" y="262.5" width="343" height="343" rx="107.5" stroke="white" stroke-opacity="0.56"/>
-    </g>
-
-    <g transform="rotate(-7 512 514)">
-      <rect x="236" y="244" width="552" height="552" rx="170" fill="url(#frontCard)"/>
-      <rect x="236.5" y="244.5" width="551" height="551" rx="169.5" stroke="white" stroke-opacity="0.72"/>
-      <ellipse cx="512" cy="304" rx="214" ry="90" fill="white" fill-opacity="0.54"/>
-      <circle cx="512" cy="530" r="136" fill="url(#ring)"/>
-      <circle cx="512" cy="530" r="122" fill="white" fill-opacity="0.16"/>
-    </g>
-  </g>
-
-  <g filter="url(#softGlow)">
-    <circle cx="514" cy="518" r="96" fill="#FFE1A8" fill-opacity="0.72"/>
-  </g>
-
-  <g transform="rotate(-7 512 514)">
-    <text x="512" y="618" text-anchor="middle" fill="#111111" font-family="Apple Color Emoji, sans-serif" font-size="308">👍</text>
-  </g>
-
-  <g filter="url(#badgeShadow)">
-    <circle cx="318" cy="720" r="68" fill="url(#fallBadge)"/>
-    <circle cx="718" cy="304" r="58" fill="url(#riseBadge)"/>
-  </g>
-
-  <path d="M348 690L328 710L314 696L282 728" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M300 728H282V710" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M676 330L700 306L716 322L752 286" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M732 286H752V306" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-
-  <path d="M350 260L382 294H362L378 332L336 294H354L350 260Z" fill="url(#boltGrad)"/>
+  <image
+    href="./awe-reference.png"
+    x="116"
+    y="116"
+    width="792"
+    height="792"
+    preserveAspectRatio="xMidYMid slice"
+    clip-path="url(#tile)"
+  />
 </svg>

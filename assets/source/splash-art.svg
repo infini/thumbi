@@ -1,61 +1,17 @@
-<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#090C0B"/>
   <defs>
-    <linearGradient id="bg" x1="286" y1="168" x2="738" y2="620" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF3E1"/>
-      <stop offset="0.52" stop-color="#E4F7EA"/>
-      <stop offset="1" stop-color="#D8E7FF"/>
-    </linearGradient>
-    <radialGradient id="peachGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(396 262) rotate(42) scale(184)">
-      <stop stop-color="#FFBEA8"/>
-      <stop offset="1" stop-color="#FFBEA8" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="frontCard" x1="388" y1="248" x2="644" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="white" stop-opacity="0.98"/>
-      <stop offset="1" stop-color="#F3F8FF" stop-opacity="0.82"/>
-    </linearGradient>
-    <linearGradient id="backCard" x1="424" y1="246" x2="650" y2="470" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF8FB" stop-opacity="0.96"/>
-      <stop offset="1" stop-color="#D8E9FF" stop-opacity="0.92"/>
-    </linearGradient>
-    <linearGradient id="ring" x1="438" y1="320" x2="590" y2="472" gradientUnits="userSpaceOnUse">
-      <stop stop-color="white" stop-opacity="0.84"/>
-      <stop offset="1" stop-color="white" stop-opacity="0.24"/>
-    </linearGradient>
-    <filter id="shadow" x="244" y="136" width="536" height="540" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#7183A0" flood-opacity="0.15"/>
-    </filter>
+    <clipPath id="tile">
+      <rect x="252" y="172" width="520" height="520" rx="116"/>
+    </clipPath>
   </defs>
-
-  <rect x="286" y="168" width="452" height="452" rx="132" fill="url(#bg)"/>
-  <rect x="286" y="168" width="452" height="452" rx="132" fill="url(#peachGlow)"/>
-  <rect x="286.5" y="168.5" width="451" height="451" rx="131.5" stroke="white" stroke-opacity="0.48"/>
-  <ellipse cx="512" cy="232" rx="154" ry="62" fill="white" fill-opacity="0.36"/>
-
-  <g filter="url(#shadow)">
-    <g transform="rotate(8 554 402)">
-      <rect x="432" y="252" width="192" height="192" rx="62" fill="url(#backCard)"/>
-      <rect x="432.5" y="252.5" width="191" height="191" rx="61.5" stroke="white" stroke-opacity="0.56"/>
-    </g>
-    <g transform="rotate(-7 512 412)">
-      <rect x="358" y="256" width="308" height="308" rx="96" fill="url(#frontCard)"/>
-      <rect x="358.5" y="256.5" width="307" height="307" rx="95.5" stroke="white" stroke-opacity="0.68"/>
-      <ellipse cx="512" cy="292" rx="120" ry="46" fill="white" fill-opacity="0.52"/>
-      <circle cx="512" cy="414" r="76" fill="url(#ring)"/>
-    </g>
-  </g>
-
-  <g transform="rotate(-7 512 412)">
-    <text x="512" y="474" text-anchor="middle" fill="#111111" font-family="Apple Color Emoji, sans-serif" font-size="172">👍</text>
-  </g>
-
-  <circle cx="404" cy="506" r="36" fill="#61AFFF"/>
-  <circle cx="616" cy="304" r="32" fill="#FF6173"/>
-  <path d="M422 492L412 502L404 494L386 512" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M398 512H386V500" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M598 316L612 302L622 312L646 288" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M632 288H646V302" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M392 258L416 284H402L414 314L382 284H396L392 258Z" fill="#FFD46C"/>
-
-  <text x="512" y="742" text-anchor="middle" fill="#253046" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="88" font-weight="700">Thumbi</text>
-  <text x="512" y="804" text-anchor="middle" fill="#71809A" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="600" letter-spacing="2">daily thumbs and tally</text>
+  <image
+    href="./awe-reference.png"
+    x="252"
+    y="172"
+    width="520"
+    height="520"
+    preserveAspectRatio="xMidYMid slice"
+    clip-path="url(#tile)"
+  />
 </svg>
