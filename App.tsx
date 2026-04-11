@@ -3,17 +3,15 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
+import PagerView from 'react-native-pager-view';
 import {
   SafeAreaProvider,
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import {
-  Animated,
   Alert,
-  Easing,
   Modal,
-  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -57,8 +55,6 @@ const REPEAT_INTERVAL_MS = 1000;
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 const TAB_BAR_HEIGHT = 76;
 const TAB_ORDER: TabKey[] = ['home', 'calendar', 'stats'];
-const TAB_SWIPE_THRESHOLD = 72;
-const TAB_ANIMATION_OFFSET = 68;
 
 interface PendingUndoAction {
   entries: VoteEntry[];
@@ -96,10 +92,7 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [calendarCursor, setCalendarCursor] = useState(() => new Date());
-  const scrollViewRef = useRef<ScrollView | null>(null);
-  const contentTranslateX = useRef(new Animated.Value(0)).current;
-  const contentOpacity = useRef(new Animated.Value(1)).current;
-  const isTabAnimatingRef = useRef(false);
+  const pagerRef = useRef<PagerView | null>(null);
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const skipNextPressRef = useRef(false);
   const holdBatchEntriesRef = useRef<VoteEntry[]>([]);
@@ -197,110 +190,256 @@ function AppContent() {
     return TAB_ORDER.indexOf(tab);
   }
 
-  function animateTabBack() {
-    Animated.parallel([
-      Animated.spring(contentTranslateX, {
-        toValue: 0,
-        damping: 18,
-        stiffness: 180,
-        mass: 0.85,
-        useNativeDriver: true,
-      }),
-      Animated.timing(contentOpacity, {
-        toValue: 1,
-        duration: 180,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }
-
   function changeTab(nextTab: TabKey) {
-    if (nextTab === activeTab || isTabAnimatingRef.current) {
-      animateTabBack();
+    if (nextTab === activeTab) {
       return;
     }
 
-    const currentIndex = getTabIndex(activeTab);
     const nextIndex = getTabIndex(nextTab);
-    const exitOffset = nextIndex > currentIndex ? -TAB_ANIMATION_OFFSET : TAB_ANIMATION_OFFSET;
-    const enterOffset = -exitOffset;
-
-    isTabAnimatingRef.current = true;
-
-    Animated.parallel([
-      Animated.timing(contentTranslateX, {
-        toValue: exitOffset,
-        duration: 140,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(contentOpacity, {
-        toValue: 0.6,
-        duration: 140,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-      setActiveTab(nextTab);
-      contentTranslateX.setValue(enterOffset);
-      contentOpacity.setValue(0.68);
-
-      Animated.parallel([
-        Animated.spring(contentTranslateX, {
-          toValue: 0,
-          damping: 18,
-          stiffness: 180,
-          mass: 0.85,
-          useNativeDriver: true,
-        }),
-        Animated.timing(contentOpacity, {
-          toValue: 1,
-          duration: 210,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        isTabAnimatingRef.current = false;
-      });
-    });
+    setActiveTab(nextTab);
+    pagerRef.current?.setPage(nextIndex);
   }
 
-  const panResponder = PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gestureState) =>
-      !isTabAnimatingRef.current &&
-      Math.abs(gestureState.dx) > 24 &&
-      Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2,
-    onPanResponderMove: (_, gestureState) => {
-      if (isTabAnimatingRef.current) {
-        return;
-      }
+  function renderHomeTab() {
+    return (
+      <>
+        <LinearGradient
+          colors={['#E8FBF6', '#FFFFFF', '#EEF5F3']}
+          end={{ x: 1, y: 1 }}
+          start={{ x: 0, y: 0 }}
+          style={styles.heroCard}
+        >
+          <View style={styles.heroHeader}>
+            <View style={styles.heroCopy}>
+              <Text style={styles.heroTitle}>오늘 기록</Text>
+            </View>
+            <View
+              style={[
+                styles.scoreBubble,
+                {
+                  backgroundColor: getTrendSoft(todaySummary.score),
+                  borderColor: `${todayScoreColor}28`,
+                },
+              ]}
+            >
+              <Text style={styles.scoreLabel}>오늘 점수</Text>
+              <Text style={[styles.scoreValue, { color: todayScoreColor }]}>
+                {formatScore(todaySummary.score)}
+              </Text>
+            </View>
+          </View>
 
-      contentTranslateX.setValue(gestureState.dx * 0.42);
-      contentOpacity.setValue(Math.max(0.78, 1 - Math.abs(gestureState.dx) / 320));
-    },
-    onPanResponderRelease: (_, gestureState) => {
-      if (Math.abs(gestureState.dx) < TAB_SWIPE_THRESHOLD) {
-        animateTabBack();
-        return;
-      }
+          <View style={styles.metricRow}>
+            <MetricPill
+              accentColor={palette.rise}
+              backgroundColor={palette.riseSoft}
+              icon="thumb-up-outline"
+              label="엄지 척!"
+              value={todaySummary.upCount}
+            />
+            <MetricPill
+              accentColor={palette.fall}
+              backgroundColor={palette.fallSoft}
+              icon="thumb-down-outline"
+              label="이건 좀..."
+              value={todaySummary.downCount}
+            />
+          </View>
 
-      const currentIndex = TAB_ORDER.indexOf(activeTab);
-      const nextIndex =
-        gestureState.dx < 0 ? currentIndex + 1 : currentIndex - 1;
+          <View style={styles.inputCard}>
+            <Text style={styles.inputLabel}>메모를 남길까요?</Text>
+            <TextInput
+              multiline
+              onChangeText={setDraftNote}
+              placeholder="예: 스스로 장난감 정리함 / 숙제 미루기"
+              placeholderTextColor={palette.textSoft}
+              style={styles.noteInput}
+              textAlignVertical="top"
+              value={draftNote}
+            />
+          </View>
 
-      if (nextIndex < 0 || nextIndex >= TAB_ORDER.length) {
-        animateTabBack();
-        return;
-      }
+          <View style={styles.actionRow}>
+            <ActionButton
+              colors={['#D7FAF4', '#92E5D9']}
+              icon="thumb-up"
+              kind="up"
+              label="엄지 척!"
+              onLongPress={handleRepeatStart}
+              onPressOut={stopRepeatInput}
+              onPress={() => handleAddEntry('up')}
+              iconColor={palette.rise}
+              labelColor="#0F5B54"
+            />
+            <ActionButton
+              colors={['#E4F0FB', '#AACFF0']}
+              icon="thumb-down"
+              kind="down"
+              label="이건 좀..."
+              onLongPress={handleRepeatStart}
+              onPressOut={stopRepeatInput}
+              onPress={() => handleAddEntry('down')}
+              iconColor={palette.fall}
+              labelColor="#1F4F89"
+            />
+          </View>
+        </LinearGradient>
 
-      changeTab(TAB_ORDER[nextIndex]);
-    },
-    onPanResponderTerminate: () => {
-      animateTabBack();
-    },
-  });
+        <View style={styles.recentCard}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>최근 기록</Text>
+              <Text style={styles.sectionDescription}>
+                가장 최근에 남긴 {recentEntries.length}개의 액션입니다.
+              </Text>
+            </View>
+          </View>
+
+          {!isHydrated ? (
+            <Text style={styles.emptyText}>기록을 불러오는 중이에요.</Text>
+          ) : recentEntries.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyStateIcon}>
+                <MaterialCommunityIcons
+                  color={palette.brand}
+                  name="thumb-up-outline"
+                  size={24}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>첫 기록을 남겨보세요</Text>
+              <Text style={styles.emptyText}>아래 버튼으로 첫 기록을 남겨보세요.</Text>
+            </View>
+          ) : (
+            <View style={styles.entriesList}>
+              {recentEntries.map((entry) => (
+                <EntryRow entry={entry} key={entry.key} onDelete={handleDeleteEntry} />
+              ))}
+            </View>
+          )}
+        </View>
+      </>
+    );
+  }
+
+  function renderCalendarTab() {
+    return (
+      <>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>월간 달력</Text>
+            <Text style={styles.sectionDescription}>
+              날짜를 눌러 그날 기록을 보고 필요하면 초기화할 수 있어요.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.calendarCard}>
+          <View style={styles.calendarHeader}>
+            <View>
+              <Text style={styles.calendarTitle}>{formatMonthRange(calendarCursor)}</Text>
+            </View>
+            <View style={styles.calendarNav}>
+              <CalendarNavButton
+                icon="chevron-double-left"
+                onPress={() => shiftCalendarYear(-1)}
+              />
+              <CalendarNavButton
+                icon="chevron-left"
+                onPress={() => shiftCalendarMonth(-1)}
+              />
+              <CalendarNavButton
+                icon="chevron-right"
+                onPress={() => shiftCalendarMonth(1)}
+              />
+              <CalendarNavButton
+                icon="chevron-double-right"
+                onPress={() => shiftCalendarYear(1)}
+              />
+            </View>
+          </View>
+          <View style={styles.calendarWeekdays}>
+            {WEEKDAY_LABELS.map((weekday) => (
+              <Text key={weekday} style={styles.calendarWeekday}>
+                {weekday}
+              </Text>
+            ))}
+          </View>
+          <View style={styles.calendarGrid}>
+            {calendarDays.map((day, index) =>
+              day ? (
+                <CalendarDayCell
+                  day={day}
+                  key={day.date.toISOString()}
+                  onPress={() => setSelectedDate(day.date)}
+                />
+              ) : (
+                <View key={`empty-${index}`} style={styles.calendarEmptyCell} />
+              )
+            )}
+          </View>
+        </View>
+      </>
+    );
+  }
+
+  function renderStatsTab() {
+    return (
+      <>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>통계</Text>
+        </View>
+
+        <View style={styles.statsGrid}>
+          <StatCard
+            accentColor={getTrendColor(weekSummary.score)}
+            period={formatCompactWeekRange(now)}
+            summary={weekSummary}
+            title="주간"
+          />
+          <StatCard
+            accentColor={getTrendColor(monthSummary.score)}
+            period={formatCompactMonthRange(now)}
+            summary={monthSummary}
+            title="월간"
+          />
+          <StatCard
+            accentColor={getTrendColor(quarterSummary.score)}
+            period={formatCompactQuarterRange(now)}
+            summary={quarterSummary}
+            title="분기"
+          />
+          <StatCard
+            accentColor={getTrendColor(yearSummary.score)}
+            period={formatCompactYearRange(now)}
+            summary={yearSummary}
+            title="연간"
+          />
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>최고 기록</Text>
+        </View>
+
+        <View style={styles.bestGrid}>
+          <BestRecordCard
+            icon="calendar-month"
+            records={monthBestRecords}
+            title="월간 최고"
+          />
+          <BestRecordCard
+            icon="calendar-range"
+            records={quarterBestRecords}
+            title="분기 최고"
+          />
+          <BestRecordCard
+            icon="calendar"
+            records={yearBestRecords}
+            title="연간 최고"
+          />
+        </View>
+      </>
+    );
+  }
 
   function handleAddEntry(kind: VoteKind) {
     if (skipNextPressRef.current) {
@@ -457,7 +596,7 @@ function AppContent() {
         <View style={[styles.orb, styles.orbFall]} />
         <View style={[styles.orb, styles.orbSun]} />
       </View>
-      <View style={styles.contentShell} {...panResponder.panHandlers}>
+      <View style={styles.contentShell}>
         <View style={styles.topBarShell}>
           <View style={styles.topBar}>
             <View style={styles.brandBadge}>
@@ -486,257 +625,45 @@ function AppContent() {
             </View>
           </View>
         </View>
-        <ScrollView
-          ref={scrollViewRef}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <PagerView
+          initialPage={0}
+          onPageSelected={(event) => {
+            const nextTab = TAB_ORDER[event.nativeEvent.position];
+            if (nextTab) {
+              setActiveTab(nextTab);
+            }
+          }}
+          ref={pagerRef}
+          style={styles.pager}
         >
-          <Animated.View
-            style={[
-              styles.tabContent,
-              {
-                opacity: contentOpacity,
-                transform: [{ translateX: contentTranslateX }],
-              },
-            ]}
-          >
-            {activeTab === 'home' ? (
-              <>
-            <LinearGradient
-              colors={['#E8FBF6', '#FFFFFF', '#EEF5F3']}
-              end={{ x: 1, y: 1 }}
-              start={{ x: 0, y: 0 }}
-              style={styles.heroCard}
+          <View key="home" style={styles.pagerPage}>
+            <ScrollView
+              contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
             >
-              <View style={styles.heroHeader}>
-                <View style={styles.heroCopy}>
-                  <Text style={styles.heroTitle}>오늘 기록</Text>
-                </View>
-                <View
-                  style={[
-                    styles.scoreBubble,
-                    {
-                      backgroundColor: getTrendSoft(todaySummary.score),
-                      borderColor: `${todayScoreColor}28`,
-                    },
-                  ]}
-                >
-                  <Text style={styles.scoreLabel}>오늘 점수</Text>
-                  <Text style={[styles.scoreValue, { color: todayScoreColor }]}>
-                    {formatScore(todaySummary.score)}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.metricRow}>
-                <MetricPill
-                  accentColor={palette.rise}
-                  backgroundColor={palette.riseSoft}
-                  icon="thumb-up-outline"
-                  label="엄지 척!"
-                  value={todaySummary.upCount}
-                />
-                <MetricPill
-                  accentColor={palette.fall}
-                  backgroundColor={palette.fallSoft}
-                  icon="thumb-down-outline"
-                  label="이건 좀..."
-                  value={todaySummary.downCount}
-                />
-              </View>
-
-              <View style={styles.inputCard}>
-                <Text style={styles.inputLabel}>메모를 남길까요?</Text>
-                <TextInput
-                  multiline
-                  onChangeText={setDraftNote}
-                  placeholder="예: 스스로 장난감 정리함 / 숙제 미루기"
-                  placeholderTextColor={palette.textSoft}
-                  style={styles.noteInput}
-                  textAlignVertical="top"
-                  value={draftNote}
-                />
-              </View>
-
-              <View style={styles.actionRow}>
-                <ActionButton
-                  colors={['#D7FAF4', '#92E5D9']}
-                  icon="thumb-up"
-                  kind="up"
-                  label="엄지 척!"
-                  onLongPress={handleRepeatStart}
-                  onPressOut={stopRepeatInput}
-                  onPress={() => handleAddEntry('up')}
-                  iconColor={palette.rise}
-                  labelColor="#0F5B54"
-                />
-                <ActionButton
-                  colors={['#E4F0FB', '#AACFF0']}
-                  icon="thumb-down"
-                  kind="down"
-                  label="이건 좀..."
-                  onLongPress={handleRepeatStart}
-                  onPressOut={stopRepeatInput}
-                  onPress={() => handleAddEntry('down')}
-                  iconColor={palette.fall}
-                  labelColor="#1F4F89"
-                />
-              </View>
-            </LinearGradient>
-
-            <View style={styles.recentCard}>
-              <View style={styles.sectionHeader}>
-                <View>
-                  <Text style={styles.sectionTitle}>최근 기록</Text>
-                  <Text style={styles.sectionDescription}>
-                    가장 최근에 남긴 {recentEntries.length}개의 액션입니다.
-                  </Text>
-                </View>
-              </View>
-
-              {!isHydrated ? (
-                <Text style={styles.emptyText}>기록을 불러오는 중이에요.</Text>
-              ) : recentEntries.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <View style={styles.emptyStateIcon}>
-                    <MaterialCommunityIcons
-                      color={palette.brand}
-                      name="thumb-up-outline"
-                      size={24}
-                    />
-                  </View>
-                  <Text style={styles.emptyTitle}>첫 기록을 남겨보세요</Text>
-                  <Text style={styles.emptyText}>아래 버튼으로 첫 기록을 남겨보세요.</Text>
-                </View>
-              ) : (
-                <View style={styles.entriesList}>
-                  {recentEntries.map((entry) => (
-                    <EntryRow entry={entry} key={entry.key} onDelete={handleDeleteEntry} />
-                  ))}
-                </View>
-              )}
-            </View>
-              </>
-            ) : null}
-
-            {activeTab === 'calendar' ? (
-              <>
-            <View style={styles.sectionHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>월간 달력</Text>
-                <Text style={styles.sectionDescription}>
-                  날짜를 눌러 그날 기록을 보고 필요하면 초기화할 수 있어요.
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.calendarCard}>
-              <View style={styles.calendarHeader}>
-                <View>
-                  <Text style={styles.calendarTitle}>{formatMonthRange(calendarCursor)}</Text>
-                </View>
-                <View style={styles.calendarNav}>
-                  <CalendarNavButton
-                    icon="chevron-double-left"
-                    onPress={() => shiftCalendarYear(-1)}
-                  />
-                  <CalendarNavButton
-                    icon="chevron-left"
-                    onPress={() => shiftCalendarMonth(-1)}
-                  />
-                  <CalendarNavButton
-                    icon="chevron-right"
-                    onPress={() => shiftCalendarMonth(1)}
-                  />
-                  <CalendarNavButton
-                    icon="chevron-double-right"
-                    onPress={() => shiftCalendarYear(1)}
-                  />
-                </View>
-              </View>
-              <View style={styles.calendarWeekdays}>
-                {WEEKDAY_LABELS.map((weekday) => (
-                  <Text key={weekday} style={styles.calendarWeekday}>
-                    {weekday}
-                  </Text>
-                ))}
-              </View>
-              <View style={styles.calendarGrid}>
-                {calendarDays.map((day, index) =>
-                  day ? (
-                    <CalendarDayCell
-                      day={day}
-                      key={day.date.toISOString()}
-                      onPress={() => setSelectedDate(day.date)}
-                    />
-                  ) : (
-                    <View key={`empty-${index}`} style={styles.calendarEmptyCell} />
-                  )
-                )}
-              </View>
-            </View>
-              </>
-            ) : null}
-
-            {activeTab === 'stats' ? (
-              <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>통계</Text>
-            </View>
-
-            <View style={styles.statsGrid}>
-              <StatCard
-                accentColor={getTrendColor(weekSummary.score)}
-                period={formatCompactWeekRange(now)}
-                summary={weekSummary}
-                title="주간"
-              />
-              <StatCard
-                accentColor={getTrendColor(monthSummary.score)}
-                period={formatCompactMonthRange(now)}
-                summary={monthSummary}
-                title="월간"
-              />
-              <StatCard
-                accentColor={getTrendColor(quarterSummary.score)}
-                period={formatCompactQuarterRange(now)}
-                summary={quarterSummary}
-                title="분기"
-              />
-              <StatCard
-                accentColor={getTrendColor(yearSummary.score)}
-                period={formatCompactYearRange(now)}
-                summary={yearSummary}
-                title="연간"
-              />
-            </View>
-
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>최고 기록</Text>
-            </View>
-
-            <View style={styles.bestGrid}>
-              <BestRecordCard
-                icon="calendar-month"
-                records={monthBestRecords}
-                title="월간 최고"
-              />
-              <BestRecordCard
-                icon="calendar-range"
-                records={quarterBestRecords}
-                title="분기 최고"
-              />
-              <BestRecordCard
-                icon="calendar"
-                records={yearBestRecords}
-                title="연간 최고"
-              />
-            </View>
-              </>
-            ) : null}
-          </Animated.View>
-        </ScrollView>
+              {renderHomeTab()}
+            </ScrollView>
+          </View>
+          <View key="calendar" style={styles.pagerPage}>
+            <ScrollView
+              contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {renderCalendarTab()}
+            </ScrollView>
+          </View>
+          <View key="stats" style={styles.pagerPage}>
+            <ScrollView
+              contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {renderStatsTab()}
+            </ScrollView>
+          </View>
+        </PagerView>
       </View>
       <BottomTabBar
         activeTab={activeTab}
@@ -1522,8 +1449,11 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     gap: 18,
   },
-  tabContent: {
-    gap: 18,
+  pager: {
+    flex: 1,
+  },
+  pagerPage: {
+    flex: 1,
   },
   topBarShell: {
     paddingHorizontal: 20,
