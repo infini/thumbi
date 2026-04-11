@@ -5,6 +5,7 @@ export interface VoteEntry {
   kind: VoteKind;
   note: string;
   createdAt: string;
+  batchId?: string;
 }
 
 export interface VoteSummary {
@@ -36,12 +37,20 @@ export interface CalendarDay {
 
 export const STORAGE_KEY = '@thumbi/vote-entries';
 
-export function createVoteEntry(kind: VoteKind, note: string): VoteEntry {
+export function createVoteEntry(
+  kind: VoteKind,
+  note: string,
+  options?: {
+    batchId?: string;
+    createdAt?: string;
+  }
+): VoteEntry {
   return {
     id: `${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind,
     note,
-    createdAt: new Date().toISOString(),
+    createdAt: options?.createdAt ?? new Date().toISOString(),
+    ...(options?.batchId ? { batchId: options.batchId } : {}),
   };
 }
 
@@ -56,7 +65,8 @@ export function isVoteEntry(value: unknown): value is VoteEntry {
     typeof candidate.id === 'string' &&
     (candidate.kind === 'up' || candidate.kind === 'down') &&
     typeof candidate.note === 'string' &&
-    typeof candidate.createdAt === 'string'
+    typeof candidate.createdAt === 'string' &&
+    (candidate.batchId === undefined || typeof candidate.batchId === 'string')
   );
 }
 

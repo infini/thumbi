@@ -28,6 +28,7 @@ import {
   formatQuarterRange,
   formatScore,
   formatWeekRange,
+  formatYearRange,
   getDaySummary,
   getEntriesForDay,
   getBestPeriodRecords,
@@ -36,6 +37,7 @@ import {
   getQuarterSummary,
   getTodaySummary,
   getWeekSummary,
+  getYearSummary,
   isVoteEntry,
   sortEntries,
   STORAGE_KEY,
@@ -60,6 +62,15 @@ interface PendingUndoAction {
 
 type TabKey = 'home' | 'calendar' | 'stats';
 
+interface RecentRecordGroup {
+  key: string;
+  ids: string[];
+  kind: VoteKind;
+  note: string;
+  createdAt: string;
+  points: number;
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
@@ -78,9 +89,11 @@ function AppContent() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [calendarCursor, setCalendarCursor] = useState(() => new Date());
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const skipNextPressRef = useRef(false);
   const holdBatchEntriesRef = useRef<VoteEntry[]>([]);
+  const holdBatchIdRef = useRef<string | null>(null);
   const holdNoteRef = useRef('');
 
   useEffect(() => {
@@ -156,11 +169,12 @@ function AppContent() {
   const weekSummary = getWeekSummary(entries, now);
   const monthSummary = getMonthSummary(entries, now);
   const quarterSummary = getQuarterSummary(entries, now);
+  const yearSummary = getYearSummary(entries, now);
   const monthBestRecords = getBestPeriodRecords(entries, 'month');
   const quarterBestRecords = getBestPeriodRecords(entries, 'quarter');
   const yearBestRecords = getBestPeriodRecords(entries, 'year');
-  const calendarDays = getMonthCalendar(entries, now);
-  const recentEntries = entries.slice(0, 6);
+  const calendarDays = getMonthCalendar(entries, calendarCursor);
+  const recentEntries = getRecentRecordGroups(entries).slice(0, 6);
   const todayScoreColor = getTrendColor(todaySummary.score);
   const selectedDaySummary = selectedDate ? getDaySummary(entries, selectedDate) : null;
   const selectedDayEntries = selectedDate ? getEntriesForDay(entries, selectedDate) : [];
@@ -199,8 +213,16 @@ function AppContent() {
   }
 
   function addBatchEntries(kind: VoteKind, count: number, note: string) {
+    const batchId =
+      holdBatchIdRef.current ??
+      `batch-${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    holdBatchIdRef.current = batchId;
+    const batchTimestamp = Date.now();
     const createdEntries = Array.from({ length: count }, () =>
-      createVoteEntry(kind, note)
+      createVoteEntry(kind, note, {
+        batchId,
+        createdAt: new Date(batchTimestamp).toISOString(),
+      })
     );
 
     setEntries((currentEntries) => sortEntries([...createdEntries, ...currentEntries]));
@@ -231,7 +253,22 @@ function AppContent() {
     }
 
     holdBatchEntriesRef.current = [];
+    holdBatchIdRef.current = null;
     holdNoteRef.current = '';
+  }
+
+  function shiftCalendarMonth(offset: number) {
+    setCalendarCursor(
+      (currentCursor) =>
+        new Date(currentCursor.getFullYear(), currentCursor.getMonth() + offset, 1)
+    );
+  }
+
+  function shiftCalendarYear(offset: number) {
+    setCalendarCursor(
+      (currentCursor) =>
+        new Date(currentCursor.getFullYear() + offset, currentCursor.getMonth(), 1)
+    );
   }
 
   function handleResetSelectedDay() {
@@ -265,10 +302,16 @@ function AppContent() {
     );
   }
 
-  function handleDeleteEntry(entry: VoteEntry) {
+  function handleDeleteEntry(group: RecentRecordGroup) {
+    const targetIds = new Set(group.ids);
+
     Alert.alert(
       '기록 삭제',
-      entry.note ? `"${entry.note}" 기록을 지울까요?` : '이 기록을 지울까요?',
+      group.note
+        ? `"${group.note}" 기록을 지울까요?`
+        : group.points > 1
+          ? `${group.points}점 묶음 기록을 지울까요?`
+          : '이 기록을 지울까요?',
       [
         {
           style: 'cancel',
@@ -279,7 +322,7 @@ function AppContent() {
           text: '삭제',
           onPress: () => {
             setEntries((currentEntries) =>
-              currentEntries.filter((currentEntry) => currentEntry.id !== entry.id)
+              currentEntries.filter((currentEntry) => !targetIds.has(currentEntry.id))
             );
           },
         },
@@ -421,7 +464,7 @@ function AppContent() {
                 <View>
                   <Text style={styles.sectionTitle}>최근 기록</Text>
                   <Text style={styles.sectionDescription}>
-                    가장 최근에 남긴 {recentEntries.length}개의 기록입니다.
+                    가장 최근에 남긴 {recentEntries.length}개의 액션입니다.
                   </Text>
                 </View>
                 <View style={styles.sectionChip}>
@@ -453,7 +496,7 @@ function AppContent() {
               ) : (
                 <View style={styles.entriesList}>
                   {recentEntries.map((entry) => (
-                    <EntryRow entry={entry} key={entry.id} onDelete={handleDeleteEntry} />
+                    <EntryRow entry={entry} key={entry.key} onDelete={handleDeleteEntry} />
                   ))}
                 </View>
               )}
@@ -470,17 +513,33 @@ function AppContent() {
                   날짜를 눌러 그날 기록을 보고 필요하면 초기화할 수 있어요.
                 </Text>
               </View>
-              <View style={styles.sectionChip}>
-                <MaterialCommunityIcons
-                  color={palette.textMuted}
-                  name="calendar-month"
-                  size={16}
-                />
-                <Text style={styles.sectionChipText}>{formatMonthRange(now)}</Text>
-              </View>
             </View>
 
             <View style={styles.calendarCard}>
+              <View style={styles.calendarHeader}>
+                <View>
+                  <Text style={styles.calendarTitle}>{formatMonthRange(calendarCursor)}</Text>
+                  <Text style={styles.calendarSubtitle}>월 / 연도 이동 가능</Text>
+                </View>
+                <View style={styles.calendarNav}>
+                  <CalendarNavButton
+                    icon="chevron-double-left"
+                    onPress={() => shiftCalendarYear(-1)}
+                  />
+                  <CalendarNavButton
+                    icon="chevron-left"
+                    onPress={() => shiftCalendarMonth(-1)}
+                  />
+                  <CalendarNavButton
+                    icon="chevron-right"
+                    onPress={() => shiftCalendarMonth(1)}
+                  />
+                  <CalendarNavButton
+                    icon="chevron-double-right"
+                    onPress={() => shiftCalendarYear(1)}
+                  />
+                </View>
+              </View>
               <View style={styles.calendarWeekdays}>
                 {WEEKDAY_LABELS.map((weekday) => (
                   <Text key={weekday} style={styles.calendarWeekday}>
@@ -511,7 +570,7 @@ function AppContent() {
               <View>
                 <Text style={styles.sectionTitle}>통계 요약</Text>
                 <Text style={styles.sectionDescription}>
-                  주간, 월간, 분기 흐름을 한 번에 봅니다.
+                  주간, 월간, 분기, 연간 흐름을 한 번에 봅니다.
                 </Text>
               </View>
               <View style={styles.sectionChip}>
@@ -545,6 +604,13 @@ function AppContent() {
                 period={formatQuarterRange(now)}
                 summary={quarterSummary}
                 title="이번 분기"
+              />
+              <StatCard
+                accentColor={getTrendColor(yearSummary.score)}
+                icon="calendar"
+                period={formatYearRange(now)}
+                summary={yearSummary}
+                title="올해"
               />
             </View>
 
@@ -730,6 +796,24 @@ function CalendarDayCell({
   );
 }
 
+function CalendarNavButton({
+  icon,
+  onPress,
+}: {
+  icon: IconName;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      hitSlop={6}
+      onPress={onPress}
+      style={({ pressed }) => [styles.calendarNavButton, pressed && styles.calendarNavPressed]}
+    >
+      <MaterialCommunityIcons color={palette.textMuted} name={icon} size={18} />
+    </Pressable>
+  );
+}
+
 function StatCard({
   accentColor,
   icon,
@@ -753,12 +837,14 @@ function StatCard({
         },
       ]}
     >
-      <View style={styles.statCardHeader}>
-        <View style={[styles.statCardIcon, { backgroundColor: `${accentColor}18` }]}>
-          <MaterialCommunityIcons color={accentColor} name={icon} size={20} />
-        </View>
-        <View>
+      <View style={styles.statCardTop}>
+        <View style={styles.statCardHeader}>
+          <View style={[styles.statCardIcon, { backgroundColor: `${accentColor}18` }]}>
+            <MaterialCommunityIcons color={accentColor} name={icon} size={18} />
+          </View>
           <Text style={styles.statCardTitle}>{title}</Text>
+        </View>
+        <View style={styles.statCardPeriodBadge}>
           <Text style={styles.statCardPeriod}>{period}</Text>
         </View>
       </View>
@@ -988,11 +1074,11 @@ function InfoModal({
             />
             <InfoRow
               icon="calendar-month"
-              text="달력 탭에서 날짜별 기록을 보고 초기화할 수 있어요."
+              text="달력 탭에서 월별 이동과 날짜별 초기화가 가능해요."
             />
             <InfoRow
               icon="chart-bell-curve-cumulative"
-              text="통계 탭에서 주간, 월간, 분기 흐름과 최고 기록을 봅니다."
+              text="통계 탭에서 주간, 월간, 분기, 연간 흐름과 최고 기록을 봅니다."
             />
           </View>
         </View>
@@ -1178,8 +1264,8 @@ function EntryRow({
   entry,
   onDelete,
 }: {
-  entry: VoteEntry;
-  onDelete: (entry: VoteEntry) => void;
+  entry: RecentRecordGroup;
+  onDelete: (entry: RecentRecordGroup) => void;
 }) {
   const accentColor = getEntryAccent(entry.kind);
   const backgroundColor = getEntrySoft(entry.kind);
@@ -1201,6 +1287,11 @@ function EntryRow({
           name={entry.kind === 'up' ? 'arrow-top-right-thick' : 'arrow-bottom-left-thick'}
           size={18}
         />
+        {entry.points > 1 ? (
+          <View style={[styles.entryPointBadge, { backgroundColor: accentColor }]}>
+            <Text style={styles.entryPointBadgeText}>{entry.points}</Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.entryCopy}>
@@ -1261,6 +1352,31 @@ function getEntryAccent(kind: VoteKind): string {
 
 function getEntrySoft(kind: VoteKind): string {
   return kind === 'up' ? palette.riseSoft : palette.fallSoft;
+}
+
+function getRecentRecordGroups(entries: VoteEntry[]): RecentRecordGroup[] {
+  const groups: RecentRecordGroup[] = [];
+
+  for (const entry of sortEntries(entries)) {
+    const lastGroup = groups[groups.length - 1];
+
+    if (entry.batchId && lastGroup && lastGroup.key === entry.batchId) {
+      lastGroup.ids.push(entry.id);
+      lastGroup.points += 1;
+      continue;
+    }
+
+    groups.push({
+      key: entry.batchId ?? entry.id,
+      ids: [entry.id],
+      kind: entry.kind,
+      note: entry.note,
+      createdAt: entry.createdAt,
+      points: 1,
+    });
+  }
+
+  return groups;
 }
 
 const styles = StyleSheet.create({
@@ -1539,7 +1655,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
+    justifyContent: 'space-between',
   },
   bestGrid: {
     gap: 12,
@@ -1551,6 +1670,43 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
     gap: 12,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  calendarTitle: {
+    color: palette.text,
+    fontFamily: fonts.display,
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  calendarSubtitle: {
+    marginTop: 3,
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  calendarNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  calendarNavButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(82, 92, 122, 0.08)',
+  },
+  calendarNavPressed: {
+    opacity: 0.72,
   },
   calendarWeekdays: {
     flexDirection: 'row',
@@ -1604,55 +1760,69 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   statCard: {
-    borderRadius: 28,
-    padding: 20,
+    width: '48.2%',
+    minHeight: 148,
+    borderRadius: 22,
+    padding: 16,
     borderWidth: 1,
-    gap: 18,
+    gap: 12,
+  },
+  statCardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
   },
   statCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
+    flex: 1,
   },
   statCardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   statCardTitle: {
     color: palette.text,
     fontFamily: fonts.display,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
+  statCardPeriodBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.74)',
+  },
   statCardPeriod: {
-    marginTop: 2,
     color: palette.textMuted,
     fontFamily: fonts.body,
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
   },
   statCardScore: {
     fontFamily: fonts.display,
-    fontSize: 42,
+    fontSize: 34,
     fontWeight: '800',
   },
   statCardDetails: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     flexWrap: 'wrap',
   },
   statDetail: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 999,
     overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.78)',
     color: palette.textMuted,
     fontFamily: fonts.body,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   bestCard: {
@@ -1786,6 +1956,25 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  entryPointBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -7,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  entryPointBadgeText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: '800',
   },
   entryCopy: {
     flex: 1,
