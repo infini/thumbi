@@ -14,6 +14,19 @@ export interface VoteSummary {
   total: number;
 }
 
+export type PeriodUnit = 'month' | 'quarter' | 'year';
+
+export interface BestPeriodRecord {
+  label: string;
+  count: number;
+  summary: VoteSummary;
+}
+
+export interface PeriodBestRecords {
+  upRecord: BestPeriodRecord | null;
+  downRecord: BestPeriodRecord | null;
+}
+
 export const STORAGE_KEY = '@thumbi/vote-entries';
 
 export function createVoteEntry(kind: VoteKind, note: string): VoteEntry {
@@ -84,6 +97,24 @@ export function getMonthSummary(
   return getSummaryBetween(entries, start, end);
 }
 
+export function getQuarterSummary(
+  entries: VoteEntry[],
+  referenceDate: Date = new Date()
+): VoteSummary {
+  const start = getQuarterStart(referenceDate);
+  const end = new Date(start.getFullYear(), start.getMonth() + 3, 1);
+  return getSummaryBetween(entries, start, end);
+}
+
+export function getYearSummary(
+  entries: VoteEntry[],
+  referenceDate: Date = new Date()
+): VoteSummary {
+  const start = new Date(referenceDate.getFullYear(), 0, 1);
+  const end = new Date(referenceDate.getFullYear() + 1, 0, 1);
+  return getSummaryBetween(entries, start, end);
+}
+
 export function getStartOfWeek(date: Date): Date {
   const weekStart = startOfDay(date);
   const currentDay = weekStart.getDay();
@@ -101,6 +132,74 @@ export function formatWeekRange(referenceDate: Date = new Date()): string {
 
 export function formatMonthRange(referenceDate: Date = new Date()): string {
   return `${referenceDate.getFullYear()}년 ${referenceDate.getMonth() + 1}월`;
+}
+
+export function formatQuarterRange(referenceDate: Date = new Date()): string {
+  const quarter = Math.floor(referenceDate.getMonth() / 3) + 1;
+  return `${referenceDate.getFullYear()}년 ${quarter}분기`;
+}
+
+export function formatYearRange(referenceDate: Date = new Date()): string {
+  return `${referenceDate.getFullYear()}년`;
+}
+
+export function getBestPeriodRecords(
+  entries: VoteEntry[],
+  unit: PeriodUnit
+): PeriodBestRecords {
+  const periodMap = new Map<string, PeriodBucket>();
+
+  for (const entry of entries) {
+    const entryDate = new Date(entry.createdAt);
+
+    if (Number.isNaN(entryDate.getTime())) {
+      continue;
+    }
+
+    const start = getPeriodStart(entryDate, unit);
+    const key = getPeriodKey(start, unit);
+    const existing = periodMap.get(key);
+    const bucket =
+      existing ??
+      {
+        key,
+        label: getPeriodLabel(start, unit),
+        start,
+        upCount: 0,
+        downCount: 0,
+        score: 0,
+        total: 0,
+      };
+
+    if (entry.kind === 'up') {
+      bucket.upCount += 1;
+    } else {
+      bucket.downCount += 1;
+    }
+
+    bucket.score = bucket.upCount - bucket.downCount;
+    bucket.total = bucket.upCount + bucket.downCount;
+
+    periodMap.set(key, bucket);
+  }
+
+  let bestUp: PeriodBucket | null = null;
+  let bestDown: PeriodBucket | null = null;
+
+  for (const bucket of periodMap.values()) {
+    if (bucket.upCount > 0 && isBetterBucket(bucket, bestUp, 'up')) {
+      bestUp = bucket;
+    }
+
+    if (bucket.downCount > 0 && isBetterBucket(bucket, bestDown, 'down')) {
+      bestDown = bucket;
+    }
+  }
+
+  return {
+    upRecord: bestUp ? toBestPeriodRecord(bestUp, 'up') : null,
+    downRecord: bestDown ? toBestPeriodRecord(bestDown, 'down') : null,
+  };
 }
 
 export function formatEntryTimestamp(
@@ -152,6 +251,82 @@ function getSummaryBetween(
   };
 }
 
+function getQuarterStart(date: Date): Date {
+  const quarterMonth = Math.floor(date.getMonth() / 3) * 3;
+  return new Date(date.getFullYear(), quarterMonth, 1);
+}
+
+function getPeriodStart(date: Date, unit: PeriodUnit): Date {
+  if (unit === 'month') {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+  }
+
+  if (unit === 'quarter') {
+    return getQuarterStart(date);
+  }
+
+  return new Date(date.getFullYear(), 0, 1);
+}
+
+function getPeriodKey(date: Date, unit: PeriodUnit): string {
+  if (unit === 'month') {
+    return `${date.getFullYear()}-${date.getMonth() + 1}`;
+  }
+
+  if (unit === 'quarter') {
+    return `${date.getFullYear()}-Q${Math.floor(date.getMonth() / 3) + 1}`;
+  }
+
+  return `${date.getFullYear()}`;
+}
+
+function getPeriodLabel(date: Date, unit: PeriodUnit): string {
+  if (unit === 'month') {
+    return formatMonthRange(date);
+  }
+
+  if (unit === 'quarter') {
+    return formatQuarterRange(date);
+  }
+
+  return formatYearRange(date);
+}
+
+function isBetterBucket(
+  candidate: PeriodBucket,
+  current: PeriodBucket | null,
+  kind: VoteKind
+): boolean {
+  if (!current) {
+    return true;
+  }
+
+  const candidateCount = kind === 'up' ? candidate.upCount : candidate.downCount;
+  const currentCount = kind === 'up' ? current.upCount : current.downCount;
+
+  if (candidateCount !== currentCount) {
+    return candidateCount > currentCount;
+  }
+
+  return candidate.start.getTime() > current.start.getTime();
+}
+
+function toBestPeriodRecord(
+  bucket: PeriodBucket,
+  kind: VoteKind
+): BestPeriodRecord {
+  return {
+    label: bucket.label,
+    count: kind === 'up' ? bucket.upCount : bucket.downCount,
+    summary: {
+      upCount: bucket.upCount,
+      downCount: bucket.downCount,
+      score: bucket.score,
+      total: bucket.total,
+    },
+  };
+}
+
 function startOfDay(date: Date): Date {
   const clone = new Date(date);
   clone.setHours(0, 0, 0, 0);
@@ -160,4 +335,10 @@ function startOfDay(date: Date): Date {
 
 function padNumber(value: number): string {
   return value.toString().padStart(2, '0');
+}
+
+interface PeriodBucket extends VoteSummary {
+  key: string;
+  label: string;
+  start: Date;
 }

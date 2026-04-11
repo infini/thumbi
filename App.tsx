@@ -14,12 +14,16 @@ import {
   View,
 } from 'react-native';
 import {
+  type BestPeriodRecord,
   createVoteEntry,
   formatEntryTimestamp,
   formatMonthRange,
+  formatQuarterRange,
   formatScore,
   formatWeekRange,
+  getBestPeriodRecords,
   getMonthSummary,
+  getQuarterSummary,
   getTodaySummary,
   getWeekSummary,
   isVoteEntry,
@@ -90,6 +94,10 @@ export default function App() {
   const todaySummary = getTodaySummary(entries, now);
   const weekSummary = getWeekSummary(entries, now);
   const monthSummary = getMonthSummary(entries, now);
+  const quarterSummary = getQuarterSummary(entries, now);
+  const monthBestRecords = getBestPeriodRecords(entries, 'month');
+  const quarterBestRecords = getBestPeriodRecords(entries, 'quarter');
+  const yearBestRecords = getBestPeriodRecords(entries, 'year');
   const recentEntries = entries.slice(0, 6);
   const todayScoreColor = getTrendColor(todaySummary.score);
 
@@ -239,7 +247,7 @@ export default function App() {
           <View>
             <Text style={styles.sectionTitle}>통계 요약</Text>
             <Text style={styles.sectionDescription}>
-              주간 흐름과 월간 누적 점수를 같이 봅니다.
+              주간, 월간, 분기 흐름을 한 번에 봅니다.
             </Text>
           </View>
           <View style={styles.sectionChip}>
@@ -267,6 +275,40 @@ export default function App() {
             summary={monthSummary}
             title="이번 달"
           />
+          <StatCard
+            accentColor={getTrendColor(quarterSummary.score)}
+            icon="calendar-range"
+            period={formatQuarterRange(now)}
+            summary={quarterSummary}
+            title="이번 분기"
+          />
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>최고 기록</Text>
+            <Text style={styles.sectionDescription}>
+              월, 분기, 년 기준으로 가장 많이 오른 시기와 내린 시기를 봅니다.
+            </Text>
+          </View>
+          <View style={styles.sectionChip}>
+            <MaterialCommunityIcons color={palette.textMuted} name="trophy" size={16} />
+            <Text style={styles.sectionChipText}>역대 최고</Text>
+          </View>
+        </View>
+
+        <View style={styles.bestGrid}>
+          <BestRecordCard
+            icon="calendar-month"
+            records={monthBestRecords}
+            title="월간 최고"
+          />
+          <BestRecordCard
+            icon="calendar-range"
+            records={quarterBestRecords}
+            title="분기 최고"
+          />
+          <BestRecordCard icon="calendar" records={yearBestRecords} title="연간 최고" />
         </View>
 
         <View style={styles.recentCard}>
@@ -428,6 +470,91 @@ function StatCard({
         <Text style={[styles.statDetail, { color: palette.rise }]}>상승 {summary.upCount}</Text>
         <Text style={[styles.statDetail, { color: palette.fall }]}>하락 {summary.downCount}</Text>
         <Text style={styles.statDetail}>총 {summary.total}</Text>
+      </View>
+    </View>
+  );
+}
+
+function BestRecordCard({
+  icon,
+  records,
+  title,
+}: {
+  icon: IconName;
+  records: {
+    upRecord: BestPeriodRecord | null;
+    downRecord: BestPeriodRecord | null;
+  };
+  title: string;
+}) {
+  return (
+    <View style={styles.bestCard}>
+      <View style={styles.bestCardHeader}>
+        <View style={styles.bestCardIcon}>
+          <MaterialCommunityIcons color={palette.text} name={icon} size={18} />
+        </View>
+        <Text style={styles.bestCardTitle}>{title}</Text>
+      </View>
+
+      <View style={styles.bestCardRows}>
+        <BestRecordRow
+          accentColor={palette.rise}
+          icon="arrow-top-right-thick"
+          label="최고 상승"
+          record={records.upRecord}
+        />
+        <BestRecordRow
+          accentColor={palette.fall}
+          icon="arrow-bottom-left-thick"
+          label="최고 하락"
+          record={records.downRecord}
+        />
+      </View>
+    </View>
+  );
+}
+
+function BestRecordRow({
+  accentColor,
+  icon,
+  label,
+  record,
+}: {
+  accentColor: string;
+  icon: IconName;
+  label: string;
+  record: BestPeriodRecord | null;
+}) {
+  return (
+    <View
+      style={[
+        styles.recordRow,
+        {
+          backgroundColor: record ? `${accentColor}0F` : 'rgba(255,255,255,0.68)',
+          borderColor: record ? `${accentColor}1F` : palette.border,
+        },
+      ]}
+    >
+      <View style={[styles.recordRowIcon, { backgroundColor: `${accentColor}18` }]}>
+        <MaterialCommunityIcons color={accentColor} name={icon} size={18} />
+      </View>
+
+      <View style={styles.recordRowCopy}>
+        <Text style={styles.recordRowLabel}>{label}</Text>
+        <Text style={styles.recordRowPeriod}>
+          {record ? record.label : '아직 기록 없음'}
+        </Text>
+      </View>
+
+      <View style={styles.recordRowValueWrap}>
+        <Text style={[styles.recordRowValue, { color: accentColor }]}>
+          {record ? `${record.count}회` : '-'}
+        </Text>
+        {record ? (
+          <Text style={styles.recordRowMeta}>
+            {`점수 ${formatScore(record.summary.score)}`}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -805,6 +932,9 @@ const styles = StyleSheet.create({
   statsGrid: {
     gap: 12,
   },
+  bestGrid: {
+    gap: 12,
+  },
   statCard: {
     borderRadius: 28,
     padding: 20,
@@ -856,6 +986,83 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 13,
     fontWeight: '700',
+  },
+  bestCard: {
+    borderRadius: 28,
+    padding: 18,
+    backgroundColor: palette.panel,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: 14,
+  },
+  bestCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  bestCardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.74)',
+  },
+  bestCardTitle: {
+    color: palette.text,
+    fontFamily: fonts.display,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  bestCardRows: {
+    gap: 10,
+  },
+  recordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  recordRowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordRowCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  recordRowLabel: {
+    color: palette.text,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  recordRowPeriod: {
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  recordRowValueWrap: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  recordRowValue: {
+    fontFamily: fonts.display,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  recordRowMeta: {
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: '600',
   },
   recentCard: {
     borderRadius: 30,
