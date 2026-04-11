@@ -4,10 +4,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import {
+  SafeAreaProvider,
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+import {
   Alert,
   Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -46,6 +50,7 @@ const UNDO_TIMEOUT_MS = 5000;
 const REPEAT_STEP = 5;
 const REPEAT_INTERVAL_MS = 1000;
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
+const TAB_BAR_HEIGHT = 76;
 
 interface PendingUndoAction {
   entries: VoteEntry[];
@@ -53,13 +58,25 @@ interface PendingUndoAction {
   note: string;
 }
 
+type TabKey = 'home' | 'calendar' | 'stats';
+
 export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+
+function AppContent() {
+  const insets = useSafeAreaInsets();
   const [entries, setEntries] = useState<VoteEntry[]>([]);
   const [draftNote, setDraftNote] = useState('');
   const [isHydrated, setIsHydrated] = useState(false);
   const [pendingUndoAction, setPendingUndoAction] =
     useState<PendingUndoAction | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>('home');
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const skipNextPressRef = useRef(false);
   const holdBatchEntriesRef = useRef<VoteEntry[]>([]);
@@ -149,6 +166,7 @@ export default function App() {
   const selectedDayTrendColor = selectedDaySummary
     ? getTrendColor(selectedDaySummary.score)
     : palette.text;
+  const scrollBottomPadding = TAB_BAR_HEIGHT + insets.bottom + 72;
 
   function handleAddEntry(kind: VoteKind) {
     if (skipNextPressRef.current) {
@@ -269,18 +287,14 @@ export default function App() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <StatusBar style="dark" />
       <View pointerEvents="none" style={styles.backgroundOrbs}>
         <View style={[styles.orb, styles.orbRise]} />
         <View style={[styles.orb, styles.orbFall]} />
         <View style={[styles.orb, styles.orbSun]} />
       </View>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.topBarShell}>
         <View style={styles.topBar}>
           <View style={styles.brandBadge}>
             <View style={styles.brandIcon}>
@@ -296,249 +310,289 @@ export default function App() {
             {isHydrated ? '이 기기 안에만 저장' : '기록 불러오는 중'}
           </Text>
         </View>
-
-        <LinearGradient
-          colors={['#FFF1F4', '#FFFFFF', '#EEF4FF']}
-          end={{ x: 1, y: 1 }}
-          start={{ x: 0, y: 0 }}
-          style={styles.heroCard}
-        >
-          <View style={styles.heroHeader}>
-            <View style={styles.heroCopy}>
-              <Text style={styles.eyebrow}>daily balance</Text>
-              <Text style={styles.heroTitle}>잘한 일과 아쉬운 일을 한 번에 기록</Text>
-              <Text style={styles.heroDescription}>
-                칭찬과 주의 기록을 쌓아두고, 이번 주와 이번 달의 흐름을 바로 확인할 수
-                있어요.
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.scoreBubble,
-                {
-                  backgroundColor: getTrendSoft(todaySummary.score),
-                  borderColor: `${todayScoreColor}28`,
-                },
-              ]}
+      </View>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {activeTab === 'home' ? (
+          <>
+            <LinearGradient
+              colors={['#FFF1F4', '#FFFFFF', '#EEF4FF']}
+              end={{ x: 1, y: 1 }}
+              start={{ x: 0, y: 0 }}
+              style={styles.heroCard}
             >
-              <Text style={styles.scoreLabel}>오늘 점수</Text>
-              <Text style={[styles.scoreValue, { color: todayScoreColor }]}>
-                {formatScore(todaySummary.score)}
-              </Text>
-            </View>
-          </View>
+              <View style={styles.heroHeader}>
+                <View style={styles.heroCopy}>
+                  <Text style={styles.eyebrow}>main input</Text>
+                  <Text style={styles.heroTitle}>메인 화면은 업다운 입력에 집중</Text>
+                  <Text style={styles.heroDescription}>
+                    탭하면 바로 기록하고, 길게 누르면 1초마다 5건씩 연속 입력할 수 있어요.
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.scoreBubble,
+                    {
+                      backgroundColor: getTrendSoft(todaySummary.score),
+                      borderColor: `${todayScoreColor}28`,
+                    },
+                  ]}
+                >
+                  <Text style={styles.scoreLabel}>오늘 점수</Text>
+                  <Text style={[styles.scoreValue, { color: todayScoreColor }]}>
+                    {formatScore(todaySummary.score)}
+                  </Text>
+                </View>
+              </View>
 
-          <View style={styles.metricRow}>
-            <MetricPill
-              accentColor={palette.rise}
-              backgroundColor={palette.riseSoft}
-              icon="arrow-top-right-thick"
-              label="상승 기록"
-              value={todaySummary.upCount}
-            />
-            <MetricPill
-              accentColor={palette.fall}
-              backgroundColor={palette.fallSoft}
-              icon="arrow-bottom-left-thick"
-              label="하락 기록"
-              value={todaySummary.downCount}
-            />
-          </View>
-
-          <View style={styles.inputCard}>
-            <Text style={styles.inputLabel}>메모를 남길까요?</Text>
-            <TextInput
-              multiline
-              onChangeText={setDraftNote}
-              placeholder="예: 스스로 장난감 정리함 / 숙제 미루기"
-              placeholderTextColor={palette.textSoft}
-              style={styles.noteInput}
-              textAlignVertical="top"
-              value={draftNote}
-            />
-          </View>
-
-          <View style={styles.actionRow}>
-            <ActionButton
-              colors={['#FFD8DE', '#FF8B98']}
-              icon="arrow-top-right-thick"
-              label="엄지 업"
-              onLongPress={handleRepeatStart}
-              onPressOut={stopRepeatInput}
-              onPress={() => handleAddEntry('up')}
-              subtitle="빨간 상승으로 기록"
-              iconColor={palette.rise}
-              labelColor="#8F223B"
-              subtitleColor="#B54E64"
-            />
-            <ActionButton
-              colors={['#DDEBFF', '#8EBEFF']}
-              icon="arrow-bottom-left-thick"
-              label="엄지 다운"
-              onLongPress={handleRepeatStart}
-              onPressOut={stopRepeatInput}
-              onPress={() => handleAddEntry('down')}
-              subtitle="파란 하락으로 기록"
-              iconColor={palette.fall}
-              labelColor="#1F4F89"
-              subtitleColor="#517AB2"
-            />
-          </View>
-        </LinearGradient>
-
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>통계 요약</Text>
-            <Text style={styles.sectionDescription}>
-              주간, 월간, 분기 흐름을 한 번에 봅니다.
-            </Text>
-          </View>
-          <View style={styles.sectionChip}>
-            <MaterialCommunityIcons
-              color={palette.textMuted}
-              name="chart-bell-curve-cumulative"
-              size={16}
-            />
-            <Text style={styles.sectionChipText}>자동 집계</Text>
-          </View>
-        </View>
-
-        <View style={styles.statsGrid}>
-          <StatCard
-            accentColor={getTrendColor(weekSummary.score)}
-            icon="calendar-week"
-            period={formatWeekRange(now)}
-            summary={weekSummary}
-            title="이번 주"
-          />
-          <StatCard
-            accentColor={getTrendColor(monthSummary.score)}
-            icon="calendar-month"
-            period={formatMonthRange(now)}
-            summary={monthSummary}
-            title="이번 달"
-          />
-          <StatCard
-            accentColor={getTrendColor(quarterSummary.score)}
-            icon="calendar-range"
-            period={formatQuarterRange(now)}
-            summary={quarterSummary}
-            title="이번 분기"
-          />
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>최고 기록</Text>
-            <Text style={styles.sectionDescription}>
-              월, 분기, 년 기준으로 가장 많이 오른 시기와 내린 시기를 봅니다.
-            </Text>
-          </View>
-          <View style={styles.sectionChip}>
-            <MaterialCommunityIcons color={palette.textMuted} name="trophy" size={16} />
-            <Text style={styles.sectionChipText}>역대 최고</Text>
-          </View>
-        </View>
-
-        <View style={styles.bestGrid}>
-          <BestRecordCard
-            icon="calendar-month"
-            records={monthBestRecords}
-            title="월간 최고"
-          />
-          <BestRecordCard
-            icon="calendar-range"
-            records={quarterBestRecords}
-            title="분기 최고"
-          />
-          <BestRecordCard icon="calendar" records={yearBestRecords} title="연간 최고" />
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>월간 달력</Text>
-            <Text style={styles.sectionDescription}>
-              날짜를 눌러 그날 기록을 보고 필요하면 초기화할 수 있어요.
-            </Text>
-          </View>
-          <View style={styles.sectionChip}>
-            <MaterialCommunityIcons
-              color={palette.textMuted}
-              name="calendar-month"
-              size={16}
-            />
-            <Text style={styles.sectionChipText}>{formatMonthRange(now)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.calendarCard}>
-          <View style={styles.calendarWeekdays}>
-            {WEEKDAY_LABELS.map((weekday) => (
-              <Text key={weekday} style={styles.calendarWeekday}>
-                {weekday}
-              </Text>
-            ))}
-          </View>
-          <View style={styles.calendarGrid}>
-            {calendarDays.map((day, index) =>
-              day ? (
-                <CalendarDayCell
-                  day={day}
-                  key={day.date.toISOString()}
-                  onPress={() => setSelectedDate(day.date)}
+              <View style={styles.metricRow}>
+                <MetricPill
+                  accentColor={palette.rise}
+                  backgroundColor={palette.riseSoft}
+                  icon="arrow-top-right-thick"
+                  label="상승 기록"
+                  value={todaySummary.upCount}
                 />
-              ) : (
-                <View key={`empty-${index}`} style={styles.calendarEmptyCell} />
-              )
-            )}
-          </View>
-        </View>
-
-        <View style={styles.recentCard}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>최근 기록</Text>
-              <Text style={styles.sectionDescription}>
-                가장 최근에 남긴 {recentEntries.length}개의 기록입니다.
-              </Text>
-            </View>
-            <View style={styles.sectionChip}>
-              <MaterialCommunityIcons
-                color={palette.textMuted}
-                name="history"
-                size={16}
-              />
-              <Text style={styles.sectionChipText}>{entries.length}개 저장</Text>
-            </View>
-          </View>
-
-          {!isHydrated ? (
-            <Text style={styles.emptyText}>기록을 불러오는 중이에요.</Text>
-          ) : recentEntries.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyStateIcon}>
-                <MaterialCommunityIcons
-                  color={palette.rise}
-                  name="chart-line-variant"
-                  size={24}
+                <MetricPill
+                  accentColor={palette.fall}
+                  backgroundColor={palette.fallSoft}
+                  icon="arrow-bottom-left-thick"
+                  label="하락 기록"
+                  value={todaySummary.downCount}
                 />
               </View>
-              <Text style={styles.emptyTitle}>첫 기록을 남겨보세요</Text>
-              <Text style={styles.emptyText}>
-                엄지 업이나 엄지 다운을 눌러 첫 번째 변화를 저장할 수 있어요.
-              </Text>
+
+              <View style={styles.inputCard}>
+                <Text style={styles.inputLabel}>메모를 남길까요?</Text>
+                <TextInput
+                  multiline
+                  onChangeText={setDraftNote}
+                  placeholder="예: 스스로 장난감 정리함 / 숙제 미루기"
+                  placeholderTextColor={palette.textSoft}
+                  style={styles.noteInput}
+                  textAlignVertical="top"
+                  value={draftNote}
+                />
+              </View>
+
+              <View style={styles.actionRow}>
+                <ActionButton
+                  colors={['#FFD8DE', '#FF8B98']}
+                  icon="arrow-top-right-thick"
+                  kind="up"
+                  label="엄지 업"
+                  onLongPress={handleRepeatStart}
+                  onPressOut={stopRepeatInput}
+                  onPress={() => handleAddEntry('up')}
+                  subtitle="빨간 상승으로 기록"
+                  iconColor={palette.rise}
+                  labelColor="#8F223B"
+                  subtitleColor="#B54E64"
+                />
+                <ActionButton
+                  colors={['#DDEBFF', '#8EBEFF']}
+                  icon="arrow-bottom-left-thick"
+                  kind="down"
+                  label="엄지 다운"
+                  onLongPress={handleRepeatStart}
+                  onPressOut={stopRepeatInput}
+                  onPress={() => handleAddEntry('down')}
+                  subtitle="파란 하락으로 기록"
+                  iconColor={palette.fall}
+                  labelColor="#1F4F89"
+                  subtitleColor="#517AB2"
+                />
+              </View>
+
+              <View style={styles.repeatHint}>
+                <MaterialCommunityIcons
+                  color={palette.sun}
+                  name="lightning-bolt"
+                  size={16}
+                />
+                <Text style={styles.repeatHintText}>길게 누르면 1초마다 5건씩 입력</Text>
+              </View>
+            </LinearGradient>
+
+            <View style={styles.recentCard}>
+              <View style={styles.sectionHeader}>
+                <View>
+                  <Text style={styles.sectionTitle}>최근 기록</Text>
+                  <Text style={styles.sectionDescription}>
+                    가장 최근에 남긴 {recentEntries.length}개의 기록입니다.
+                  </Text>
+                </View>
+                <View style={styles.sectionChip}>
+                  <MaterialCommunityIcons
+                    color={palette.textMuted}
+                    name="history"
+                    size={16}
+                  />
+                  <Text style={styles.sectionChipText}>{entries.length}개 저장</Text>
+                </View>
+              </View>
+
+              {!isHydrated ? (
+                <Text style={styles.emptyText}>기록을 불러오는 중이에요.</Text>
+              ) : recentEntries.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyStateIcon}>
+                    <MaterialCommunityIcons
+                      color={palette.rise}
+                      name="chart-line-variant"
+                      size={24}
+                    />
+                  </View>
+                  <Text style={styles.emptyTitle}>첫 기록을 남겨보세요</Text>
+                  <Text style={styles.emptyText}>
+                    엄지 업이나 엄지 다운을 눌러 첫 번째 변화를 저장할 수 있어요.
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.entriesList}>
+                  {recentEntries.map((entry) => (
+                    <EntryRow entry={entry} key={entry.id} onDelete={handleDeleteEntry} />
+                  ))}
+                </View>
+              )}
             </View>
-          ) : (
-            <View style={styles.entriesList}>
-              {recentEntries.map((entry) => (
-                <EntryRow entry={entry} key={entry.id} onDelete={handleDeleteEntry} />
-              ))}
+          </>
+        ) : null}
+
+        {activeTab === 'calendar' ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>월간 달력</Text>
+                <Text style={styles.sectionDescription}>
+                  날짜를 눌러 그날 기록을 보고 필요하면 초기화할 수 있어요.
+                </Text>
+              </View>
+              <View style={styles.sectionChip}>
+                <MaterialCommunityIcons
+                  color={palette.textMuted}
+                  name="calendar-month"
+                  size={16}
+                />
+                <Text style={styles.sectionChipText}>{formatMonthRange(now)}</Text>
+              </View>
             </View>
-          )}
-        </View>
+
+            <View style={styles.calendarCard}>
+              <View style={styles.calendarWeekdays}>
+                {WEEKDAY_LABELS.map((weekday) => (
+                  <Text key={weekday} style={styles.calendarWeekday}>
+                    {weekday}
+                  </Text>
+                ))}
+              </View>
+              <View style={styles.calendarGrid}>
+                {calendarDays.map((day, index) =>
+                  day ? (
+                    <CalendarDayCell
+                      day={day}
+                      key={day.date.toISOString()}
+                      onPress={() => setSelectedDate(day.date)}
+                    />
+                  ) : (
+                    <View key={`empty-${index}`} style={styles.calendarEmptyCell} />
+                  )
+                )}
+              </View>
+            </View>
+          </>
+        ) : null}
+
+        {activeTab === 'stats' ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>통계 요약</Text>
+                <Text style={styles.sectionDescription}>
+                  주간, 월간, 분기 흐름을 한 번에 봅니다.
+                </Text>
+              </View>
+              <View style={styles.sectionChip}>
+                <MaterialCommunityIcons
+                  color={palette.textMuted}
+                  name="chart-bell-curve-cumulative"
+                  size={16}
+                />
+                <Text style={styles.sectionChipText}>자동 집계</Text>
+              </View>
+            </View>
+
+            <View style={styles.statsGrid}>
+              <StatCard
+                accentColor={getTrendColor(weekSummary.score)}
+                icon="calendar-week"
+                period={formatWeekRange(now)}
+                summary={weekSummary}
+                title="이번 주"
+              />
+              <StatCard
+                accentColor={getTrendColor(monthSummary.score)}
+                icon="calendar-month"
+                period={formatMonthRange(now)}
+                summary={monthSummary}
+                title="이번 달"
+              />
+              <StatCard
+                accentColor={getTrendColor(quarterSummary.score)}
+                icon="calendar-range"
+                period={formatQuarterRange(now)}
+                summary={quarterSummary}
+                title="이번 분기"
+              />
+            </View>
+
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>최고 기록</Text>
+                <Text style={styles.sectionDescription}>
+                  월, 분기, 년 기준으로 가장 많이 오른 시기와 내린 시기를 봅니다.
+                </Text>
+              </View>
+              <View style={styles.sectionChip}>
+                <MaterialCommunityIcons color={palette.textMuted} name="trophy" size={16} />
+                <Text style={styles.sectionChipText}>역대 최고</Text>
+              </View>
+            </View>
+
+            <View style={styles.bestGrid}>
+              <BestRecordCard
+                icon="calendar-month"
+                records={monthBestRecords}
+                title="월간 최고"
+              />
+              <BestRecordCard
+                icon="calendar-range"
+                records={quarterBestRecords}
+                title="분기 최고"
+              />
+              <BestRecordCard
+                icon="calendar"
+                records={yearBestRecords}
+                title="연간 최고"
+              />
+            </View>
+          </>
+        ) : null}
       </ScrollView>
+      <BottomTabBar
+        activeTab={activeTab}
+        bottomInset={insets.bottom}
+        onChange={setActiveTab}
+      />
       {pendingUndoAction ? (
-        <UndoSnackbar action={pendingUndoAction} onUndo={handleUndoAdd} />
+        <UndoSnackbar
+          action={pendingUndoAction}
+          bottomOffset={TAB_BAR_HEIGHT + insets.bottom + 16}
+          onUndo={handleUndoAdd}
+        />
       ) : null}
       <DayDetailModal
         entries={selectedDayEntries}
@@ -581,6 +635,7 @@ function MetricPill({
 function ActionButton({
   colors,
   icon,
+  kind,
   label,
   onLongPress,
   onPressOut,
@@ -592,6 +647,7 @@ function ActionButton({
 }: {
   colors: readonly [string, string];
   icon: IconName;
+  kind: VoteKind;
   label: string;
   onLongPress: (kind: VoteKind) => void;
   onPressOut: () => void;
@@ -604,7 +660,7 @@ function ActionButton({
   return (
     <Pressable
       delayLongPress={350}
-      onLongPress={() => onLongPress(icon === 'arrow-top-right-thick' ? 'up' : 'down')}
+      onLongPress={() => onLongPress(kind)}
       onPress={onPress}
       onPressOut={onPressOut}
       style={({ pressed }) => [
@@ -807,9 +863,11 @@ function BestRecordRow({
 
 function UndoSnackbar({
   action,
+  bottomOffset,
   onUndo,
 }: {
   action: PendingUndoAction;
+  bottomOffset: number;
   onUndo: () => void;
 }) {
   const isRise = action.kind === 'up';
@@ -828,7 +886,7 @@ function UndoSnackbar({
   const icon = isRise ? 'arrow-top-right-thick' : 'arrow-bottom-left-thick';
 
   return (
-    <View pointerEvents="box-none" style={styles.undoWrap}>
+    <View pointerEvents="box-none" style={[styles.undoWrap, { bottom: bottomOffset }]}>
       <LinearGradient
         colors={colors}
         end={{ x: 1, y: 1 }}
@@ -856,6 +914,74 @@ function UndoSnackbar({
         </Pressable>
       </LinearGradient>
     </View>
+  );
+}
+
+function BottomTabBar({
+  activeTab,
+  bottomInset,
+  onChange,
+}: {
+  activeTab: TabKey;
+  bottomInset: number;
+  onChange: (tab: TabKey) => void;
+}) {
+  return (
+    <View style={[styles.tabBarWrap, { paddingBottom: Math.max(bottomInset, 12) }]}>
+      <View style={styles.tabBar}>
+        <TabBarButton
+          accentColor={palette.rise}
+          active={activeTab === 'home'}
+          icon="thumb-up-outline"
+          label="업다운"
+          onPress={() => onChange('home')}
+        />
+        <TabBarButton
+          accentColor={palette.fall}
+          active={activeTab === 'calendar'}
+          icon="calendar-month"
+          label="달력"
+          onPress={() => onChange('calendar')}
+        />
+        <TabBarButton
+          accentColor={palette.sun}
+          active={activeTab === 'stats'}
+          icon="chart-bell-curve-cumulative"
+          label="통계"
+          onPress={() => onChange('stats')}
+        />
+      </View>
+    </View>
+  );
+}
+
+function TabBarButton({
+  accentColor,
+  active,
+  icon,
+  label,
+  onPress,
+}: {
+  accentColor: string;
+  active: boolean;
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+}) {
+  const textColor = active ? palette.text : palette.textMuted;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.tabButton,
+        active && { backgroundColor: `${accentColor}22` },
+        pressed && styles.tabButtonPressed,
+      ]}
+    >
+      <MaterialCommunityIcons color={textColor} name={icon} size={20} />
+      <Text style={[styles.tabButtonLabel, { color: textColor }]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -1110,9 +1236,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 120,
+    paddingTop: 8,
+    paddingBottom: 24,
     gap: 18,
+  },
+  topBarShell: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 4,
   },
   topBar: {
     flexDirection: 'row',
@@ -1277,6 +1408,22 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     gap: 14,
+  },
+  repeatHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.62)',
+    alignSelf: 'flex-start',
+  },
+  repeatHintText: {
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '700',
   },
   actionButtonWrap: {
     flex: 1,
@@ -1779,7 +1926,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 20,
     right: 20,
-    bottom: 18,
   },
   undoCard: {
     flexDirection: 'row',
@@ -1834,5 +1980,45 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 13,
     fontWeight: '800',
+  },
+  tabBarWrap: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 0,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.75)',
+    shadowColor: '#6B7892',
+    shadowOpacity: 0.16,
+    shadowRadius: 22,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    elevation: 14,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  tabButtonPressed: {
+    opacity: 0.78,
+  },
+  tabButtonLabel: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
