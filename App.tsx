@@ -250,10 +250,20 @@ function AppContent() {
   }
 
   function renderHomeTab() {
+    const heroColors = isDark
+      ? (['#14201E', '#101715', '#0E1413'] as const)
+      : (['#E8FBF6', '#FFFFFF', '#EEF5F3'] as const);
+    const riseButtonColors = isDark
+      ? (['#1B3632', '#24554E'] as const)
+      : (['#D7FAF4', '#92E5D9'] as const);
+    const fallButtonColors = isDark
+      ? (['#1A2735', '#284966'] as const)
+      : (['#E4F0FB', '#AACFF0'] as const);
+
     return (
       <>
         <LinearGradient
-          colors={['#E8FBF6', '#FFFFFF', '#EEF5F3']}
+          colors={heroColors}
           end={{ x: 1, y: 1 }}
           start={{ x: 0, y: 0 }}
           style={styles.heroCard}
@@ -310,7 +320,7 @@ function AppContent() {
 
           <View style={styles.actionRow}>
             <ActionButton
-              colors={['#D7FAF4', '#92E5D9']}
+              colors={riseButtonColors}
               icon="thumb-up"
               kind="up"
               label="엄지 척!"
@@ -321,7 +331,7 @@ function AppContent() {
               labelColor="#0F5B54"
             />
             <ActionButton
-              colors={['#E4F0FB', '#AACFF0']}
+              colors={fallButtonColors}
               icon="thumb-down"
               kind="down"
               label="이건 좀..."
@@ -1038,12 +1048,16 @@ function UndoSnackbar({
   bottomOffset: number;
   onUndo: () => void;
 }) {
-  const { palette, styles } = useAppTheme();
+  const { isDark, palette, styles } = useAppTheme();
   const isRise = action.kind === 'up';
   const accentColor = isRise ? palette.rise : palette.fall;
   const colors = isRise
-    ? (['#FFE8EC', '#FFC3CC'] as const)
-    : (['#EAF2FF', '#C7DDFF'] as const);
+    ? isDark
+      ? (['#18302D', '#244541'] as const)
+      : (['#FFE8EC', '#FFC3CC'] as const)
+    : isDark
+      ? (['#182430', '#23384C'] as const)
+      : (['#EAF2FF', '#C7DDFF'] as const);
   const addedCount = action.entries.length;
   const title = isRise
     ? `엄지 척! ${addedCount}건 추가됨`
