@@ -403,15 +403,15 @@ function AppContent() {
                 <MetricPill
                   accentColor={palette.rise}
                   backgroundColor={palette.riseSoft}
-                  icon="arrow-top-right-thick"
-                  label="상승 기록"
+                  icon="thumb-up-outline"
+                  label="엄지 척!"
                   value={todaySummary.upCount}
                 />
                 <MetricPill
                   accentColor={palette.fall}
                   backgroundColor={palette.fallSoft}
-                  icon="arrow-bottom-left-thick"
-                  label="하락 기록"
+                  icon="thumb-down-outline"
+                  label="이건 좀..."
                   value={todaySummary.downCount}
                 />
               </View>
@@ -432,29 +432,25 @@ function AppContent() {
               <View style={styles.actionRow}>
                 <ActionButton
                   colors={['#D7FAF4', '#92E5D9']}
-                  icon="arrow-top-right-thick"
+                  icon="thumb-up"
                   kind="up"
-                  label="엄지 업"
+                  label="엄지 척!"
                   onLongPress={handleRepeatStart}
                   onPressOut={stopRepeatInput}
                   onPress={() => handleAddEntry('up')}
-                  subtitle="민트 톤으로 기록"
                   iconColor={palette.rise}
                   labelColor="#0F5B54"
-                  subtitleColor="#4D7C76"
                 />
                 <ActionButton
                   colors={['#E4F0FB', '#AACFF0']}
-                  icon="arrow-bottom-left-thick"
+                  icon="thumb-down"
                   kind="down"
-                  label="엄지 다운"
+                  label="이건 좀..."
                   onLongPress={handleRepeatStart}
                   onPressOut={stopRepeatInput}
                   onPress={() => handleAddEntry('down')}
-                  subtitle="파란 하락으로 기록"
                   iconColor={palette.fall}
                   labelColor="#1F4F89"
-                  subtitleColor="#517AB2"
                 />
               </View>
             </LinearGradient>
@@ -489,9 +485,7 @@ function AppContent() {
                     />
                   </View>
                   <Text style={styles.emptyTitle}>첫 기록을 남겨보세요</Text>
-                  <Text style={styles.emptyText}>
-                    엄지 업이나 엄지 다운을 눌러 첫 번째 변화를 저장할 수 있어요.
-                  </Text>
+                  <Text style={styles.emptyText}>아래 버튼으로 첫 기록을 남겨보세요.</Text>
                 </View>
               ) : (
                 <View style={styles.entriesList}>
@@ -679,10 +673,8 @@ function ActionButton({
   onLongPress,
   onPressOut,
   onPress,
-  subtitle,
   iconColor,
   labelColor,
-  subtitleColor,
 }: {
   colors: readonly [string, string];
   icon: IconName;
@@ -691,10 +683,8 @@ function ActionButton({
   onLongPress: (kind: VoteKind) => void;
   onPressOut: () => void;
   onPress: () => void;
-  subtitle: string;
   iconColor: string;
   labelColor: string;
-  subtitleColor: string;
 }) {
   return (
     <Pressable
@@ -717,9 +707,6 @@ function ActionButton({
           <MaterialCommunityIcons color={iconColor} name={icon} size={28} />
         </View>
         <Text style={[styles.actionButtonLabel, { color: labelColor }]}>{label}</Text>
-        <Text style={[styles.actionButtonSubtitle, { color: subtitleColor }]}>
-          {subtitle}
-        </Text>
       </LinearGradient>
     </Pressable>
   );
@@ -852,13 +839,13 @@ function BestRecordCard({
       <View style={styles.bestCardRows}>
         <BestRecordRow
           accentColor={palette.rise}
-          icon="arrow-top-right-thick"
+          icon="thumb-up-outline"
           label="최고 상승"
           record={records.upRecord}
         />
         <BestRecordRow
           accentColor={palette.fall}
-          icon="arrow-bottom-left-thick"
+          icon="thumb-down-outline"
           label="최고 하락"
           record={records.downRecord}
         />
@@ -929,13 +916,13 @@ function UndoSnackbar({
     : (['#EAF2FF', '#C7DDFF'] as const);
   const addedCount = action.entries.length;
   const title = isRise
-    ? `상승 기록 ${addedCount}건이 추가됐어요`
-    : `하락 기록 ${addedCount}건이 추가됐어요`;
+    ? `엄지 척! ${addedCount}건 추가됨`
+    : `이건 좀... ${addedCount}건 추가됨`;
   const subtitle =
     addedCount > 1
       ? '롱프레스 묶음 입력을 되돌릴 수 있어요.'
       : action.note || (isRise ? '칭찬 기록이 저장됐어요.' : '주의 기록이 저장됐어요.');
-  const icon = isRise ? 'arrow-top-right-thick' : 'arrow-bottom-left-thick';
+  const icon = isRise ? 'thumb-up-outline' : 'thumb-down-outline';
 
   return (
     <View pointerEvents="box-none" style={[styles.undoWrap, { bottom: bottomOffset }]}>
@@ -1153,15 +1140,15 @@ function DayDetailModal({
               <MetricPill
                 accentColor={palette.rise}
                 backgroundColor={palette.riseSoft}
-                icon="arrow-top-right-thick"
-                label="상승"
+                icon="thumb-up-outline"
+                label="엄지 척!"
                 value={summary?.upCount ?? 0}
               />
               <MetricPill
                 accentColor={palette.fall}
                 backgroundColor={palette.fallSoft}
-                icon="arrow-bottom-left-thick"
-                label="하락"
+                icon="thumb-down-outline"
+                label="이건 좀..."
                 value={summary?.downCount ?? 0}
               />
             </View>
@@ -1188,8 +1175,8 @@ function DayDetailModal({
                         color={entry.kind === 'up' ? palette.rise : palette.fall}
                         name={
                           entry.kind === 'up'
-                            ? 'arrow-top-right-thick'
-                            : 'arrow-bottom-left-thick'
+                            ? 'thumb-up-outline'
+                            : 'thumb-down-outline'
                         }
                         size={14}
                       />
@@ -1250,7 +1237,7 @@ function EntryRow({
       <View style={[styles.entryIcon, { backgroundColor }]}>
         <MaterialCommunityIcons
           color={accentColor}
-          name={entry.kind === 'up' ? 'arrow-top-right-thick' : 'arrow-bottom-left-thick'}
+          name={entry.kind === 'up' ? 'thumb-up-outline' : 'thumb-down-outline'}
           size={18}
         />
         {entry.points > 1 ? (
@@ -1574,11 +1561,12 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.985 }],
   },
   actionButton: {
-    minHeight: 156,
+    minHeight: 150,
     paddingHorizontal: 18,
-    paddingVertical: 20,
+    paddingVertical: 18,
     borderRadius: 28,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: 18,
     shadowColor: '#2B3443',
     shadowOpacity: 0.15,
     shadowRadius: 14,
@@ -1597,15 +1585,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.72)',
   },
   actionButtonLabel: {
-    marginTop: 18,
     fontFamily: fonts.display,
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: '700',
-  },
-  actionButtonSubtitle: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    fontWeight: '600',
   },
   sectionHeader: {
     flexDirection: 'row',
