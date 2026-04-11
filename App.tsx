@@ -10,6 +10,7 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import {
+  Animated,
   Alert,
   Modal,
   Pressable,
@@ -93,6 +94,7 @@ function AppContent() {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [calendarCursor, setCalendarCursor] = useState(() => new Date());
   const pagerRef = useRef<PagerView | null>(null);
+  const tabPosition = useRef(new Animated.Value(0)).current;
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const skipNextPressRef = useRef(false);
   const holdBatchEntriesRef = useRef<VoteEntry[]>([]);
@@ -627,6 +629,11 @@ function AppContent() {
         </View>
         <PagerView
           initialPage={0}
+          onPageScroll={(event) => {
+            tabPosition.setValue(
+              event.nativeEvent.position + event.nativeEvent.offset
+            );
+          }}
           onPageSelected={(event) => {
             const nextTab = TAB_ORDER[event.nativeEvent.position];
             if (nextTab) {
@@ -669,6 +676,7 @@ function AppContent() {
         activeTab={activeTab}
         bottomInset={insets.bottom}
         onChange={changeTab}
+        tabPosition={tabPosition}
       />
       {pendingUndoAction ? (
         <UndoSnackbar
@@ -1011,14 +1019,47 @@ function BottomTabBar({
   activeTab,
   bottomInset,
   onChange,
+  tabPosition,
 }: {
   activeTab: TabKey;
   bottomInset: number;
   onChange: (tab: TabKey) => void;
+  tabPosition: Animated.Value;
 }) {
+  const [barWidth, setBarWidth] = useState(0);
+  const horizontalPadding = 10;
+  const gap = 10;
+  const tabWidth =
+    barWidth > 0 ? (barWidth - horizontalPadding * 2 - gap * 2) / 3 : 0;
+
+  const indicatorTranslateX = tabPosition.interpolate({
+    inputRange: [0, 1, 2],
+    outputRange: [
+      horizontalPadding,
+      horizontalPadding + tabWidth + gap,
+      horizontalPadding + (tabWidth + gap) * 2,
+    ],
+    extrapolate: 'clamp',
+  });
+
   return (
     <View style={[styles.tabBarWrap, { paddingBottom: Math.max(bottomInset, 12) }]}>
-      <View style={styles.tabBar}>
+      <View
+        onLayout={(event) => setBarWidth(event.nativeEvent.layout.width)}
+        style={styles.tabBar}
+      >
+        {tabWidth > 0 ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.tabIndicator,
+              {
+                width: tabWidth,
+                transform: [{ translateX: indicatorTranslateX }],
+              },
+            ]}
+          />
+        ) : null}
         <TabBarButton
           accentColor={palette.brand}
           active={activeTab === 'home'}
@@ -1128,7 +1169,6 @@ function TabBarButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.tabButton,
-        active && { backgroundColor: `${accentColor}22` },
         pressed && styles.tabButtonPressed,
       ]}
     >
@@ -2296,6 +2336,22 @@ const styles = StyleSheet.create({
       height: 10,
     },
     elevation: 14,
+  },
+  tabIndicator: {
+    position: 'absolute',
+    top: 10,
+    bottom: 0,
+    height: 44,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    shadowColor: '#93A3BC',
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    elevation: 4,
   },
   tabButton: {
     flex: 1,
