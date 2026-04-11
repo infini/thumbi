@@ -2,9 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState, type ComponentProps } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import {
   Alert,
+  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -14,14 +15,19 @@ import {
   View,
 } from 'react-native';
 import {
+  type CalendarDay,
   type BestPeriodRecord,
   createVoteEntry,
+  formatDateLabel,
   formatEntryTimestamp,
   formatMonthRange,
   formatQuarterRange,
   formatScore,
   formatWeekRange,
+  getDaySummary,
+  getEntriesForDay,
   getBestPeriodRecords,
+  getMonthCalendar,
   getMonthSummary,
   getQuarterSummary,
   getTodaySummary,
@@ -37,12 +43,27 @@ import { fonts, palette } from './src/theme';
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 const UNDO_TIMEOUT_MS = 5000;
+const REPEAT_STEP = 5;
+const REPEAT_INTERVAL_MS = 1000;
+const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
+
+interface PendingUndoAction {
+  entries: VoteEntry[];
+  kind: VoteKind;
+  note: string;
+}
 
 export default function App() {
   const [entries, setEntries] = useState<VoteEntry[]>([]);
   const [draftNote, setDraftNote] = useState('');
   const [isHydrated, setIsHydrated] = useState(false);
-  const [pendingUndoEntry, setPendingUndoEntry] = useState<VoteEntry | null>(null);
+  const [pendingUndoAction, setPendingUndoAction] =
+    useState<PendingUndoAction | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const skipNextPressRef = useRef(false);
+  const holdBatchEntriesRef = useRef<VoteEntry[]>([]);
+  const holdNoteRef = useRef('');
 
   useEffect(() => {
     let isMounted = true;
@@ -93,18 +114,24 @@ export default function App() {
   }, [entries, isHydrated]);
 
   useEffect(() => {
-    if (!pendingUndoEntry) {
+    if (!pendingUndoAction) {
       return;
     }
 
     const timeoutId = setTimeout(() => {
-      setPendingUndoEntry(null);
+      setPendingUndoAction(null);
     }, UNDO_TIMEOUT_MS);
 
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [pendingUndoEntry]);
+  }, [pendingUndoAction]);
+
+  useEffect(() => {
+    return () => {
+      stopRepeatInput();
+    };
+  }, []);
 
   const now = new Date();
   const todaySummary = getTodaySummary(entries, now);
@@ -114,25 +141,109 @@ export default function App() {
   const monthBestRecords = getBestPeriodRecords(entries, 'month');
   const quarterBestRecords = getBestPeriodRecords(entries, 'quarter');
   const yearBestRecords = getBestPeriodRecords(entries, 'year');
+  const calendarDays = getMonthCalendar(entries, now);
   const recentEntries = entries.slice(0, 6);
   const todayScoreColor = getTrendColor(todaySummary.score);
+  const selectedDaySummary = selectedDate ? getDaySummary(entries, selectedDate) : null;
+  const selectedDayEntries = selectedDate ? getEntriesForDay(entries, selectedDate) : [];
+  const selectedDayTrendColor = selectedDaySummary
+    ? getTrendColor(selectedDaySummary.score)
+    : palette.text;
 
   function handleAddEntry(kind: VoteKind) {
-    const nextEntry = createVoteEntry(kind, draftNote.trim());
-    setEntries((currentEntries) => [nextEntry, ...currentEntries]);
-    setPendingUndoEntry(nextEntry);
+    if (skipNextPressRef.current) {
+      skipNextPressRef.current = false;
+      return;
+    }
+
+    const note = draftNote.trim();
+    const nextEntry = createVoteEntry(kind, note);
+    setEntries((currentEntries) => sortEntries([nextEntry, ...currentEntries]));
+    setPendingUndoAction({
+      entries: [nextEntry],
+      kind,
+      note,
+    });
     setDraftNote('');
   }
 
   function handleUndoAdd() {
-    if (!pendingUndoEntry) {
+    if (!pendingUndoAction) {
       return;
     }
 
+    const pendingIds = new Set(pendingUndoAction.entries.map((entry) => entry.id));
     setEntries((currentEntries) =>
-      currentEntries.filter((entry) => entry.id !== pendingUndoEntry.id)
+      currentEntries.filter((entry) => !pendingIds.has(entry.id))
     );
-    setPendingUndoEntry(null);
+    setPendingUndoAction(null);
+  }
+
+  function addBatchEntries(kind: VoteKind, count: number, note: string) {
+    const createdEntries = Array.from({ length: count }, () =>
+      createVoteEntry(kind, note)
+    );
+
+    setEntries((currentEntries) => sortEntries([...createdEntries, ...currentEntries]));
+    holdBatchEntriesRef.current = [...holdBatchEntriesRef.current, ...createdEntries];
+    setPendingUndoAction({
+      entries: holdBatchEntriesRef.current,
+      kind,
+      note,
+    });
+  }
+
+  function handleRepeatStart(kind: VoteKind) {
+    stopRepeatInput();
+    skipNextPressRef.current = true;
+    holdBatchEntriesRef.current = [];
+    holdNoteRef.current = draftNote.trim();
+    addBatchEntries(kind, REPEAT_STEP, holdNoteRef.current);
+    setDraftNote('');
+    repeatIntervalRef.current = setInterval(() => {
+      addBatchEntries(kind, REPEAT_STEP, holdNoteRef.current);
+    }, REPEAT_INTERVAL_MS);
+  }
+
+  function stopRepeatInput() {
+    if (repeatIntervalRef.current) {
+      clearInterval(repeatIntervalRef.current);
+      repeatIntervalRef.current = null;
+    }
+
+    holdBatchEntriesRef.current = [];
+    holdNoteRef.current = '';
+  }
+
+  function handleResetSelectedDay() {
+    if (!selectedDate || selectedDayEntries.length === 0) {
+      return;
+    }
+
+    const targetDate = selectedDate;
+    const targetIds = new Set(selectedDayEntries.map((entry) => entry.id));
+
+    Alert.alert(
+      '일별 기록 초기화',
+      `${formatDateLabel(targetDate)} 기록 ${selectedDayEntries.length}건을 모두 지울까요?`,
+      [
+        {
+          style: 'cancel',
+          text: '취소',
+        },
+        {
+          style: 'destructive',
+          text: '초기화',
+          onPress: () => {
+            setEntries((currentEntries) =>
+              currentEntries.filter((entry) => !targetIds.has(entry.id))
+            );
+            setPendingUndoAction(null);
+            setSelectedDate(null);
+          },
+        },
+      ]
+    );
   }
 
   function handleDeleteEntry(entry: VoteEntry) {
@@ -252,6 +363,8 @@ export default function App() {
               colors={['#FFD8DE', '#FF8B98']}
               icon="arrow-top-right-thick"
               label="엄지 업"
+              onLongPress={handleRepeatStart}
+              onPressOut={stopRepeatInput}
               onPress={() => handleAddEntry('up')}
               subtitle="빨간 상승으로 기록"
               iconColor={palette.rise}
@@ -262,6 +375,8 @@ export default function App() {
               colors={['#DDEBFF', '#8EBEFF']}
               icon="arrow-bottom-left-thick"
               label="엄지 다운"
+              onLongPress={handleRepeatStart}
+              onPressOut={stopRepeatInput}
               onPress={() => handleAddEntry('down')}
               subtitle="파란 하락으로 기록"
               iconColor={palette.fall}
@@ -339,6 +454,46 @@ export default function App() {
           <BestRecordCard icon="calendar" records={yearBestRecords} title="연간 최고" />
         </View>
 
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>월간 달력</Text>
+            <Text style={styles.sectionDescription}>
+              날짜를 눌러 그날 기록을 보고 필요하면 초기화할 수 있어요.
+            </Text>
+          </View>
+          <View style={styles.sectionChip}>
+            <MaterialCommunityIcons
+              color={palette.textMuted}
+              name="calendar-month"
+              size={16}
+            />
+            <Text style={styles.sectionChipText}>{formatMonthRange(now)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.calendarCard}>
+          <View style={styles.calendarWeekdays}>
+            {WEEKDAY_LABELS.map((weekday) => (
+              <Text key={weekday} style={styles.calendarWeekday}>
+                {weekday}
+              </Text>
+            ))}
+          </View>
+          <View style={styles.calendarGrid}>
+            {calendarDays.map((day, index) =>
+              day ? (
+                <CalendarDayCell
+                  day={day}
+                  key={day.date.toISOString()}
+                  onPress={() => setSelectedDate(day.date)}
+                />
+              ) : (
+                <View key={`empty-${index}`} style={styles.calendarEmptyCell} />
+              )
+            )}
+          </View>
+        </View>
+
         <View style={styles.recentCard}>
           <View style={styles.sectionHeader}>
             <View>
@@ -382,9 +537,17 @@ export default function App() {
           )}
         </View>
       </ScrollView>
-      {pendingUndoEntry ? (
-        <UndoSnackbar entry={pendingUndoEntry} onUndo={handleUndoAdd} />
+      {pendingUndoAction ? (
+        <UndoSnackbar action={pendingUndoAction} onUndo={handleUndoAdd} />
       ) : null}
+      <DayDetailModal
+        entries={selectedDayEntries}
+        onClose={() => setSelectedDate(null)}
+        onReset={handleResetSelectedDay}
+        selectedDate={selectedDate}
+        summary={selectedDaySummary}
+        trendColor={selectedDayTrendColor}
+      />
     </SafeAreaView>
   );
 }
@@ -419,6 +582,8 @@ function ActionButton({
   colors,
   icon,
   label,
+  onLongPress,
+  onPressOut,
   onPress,
   subtitle,
   iconColor,
@@ -428,6 +593,8 @@ function ActionButton({
   colors: readonly [string, string];
   icon: IconName;
   label: string;
+  onLongPress: (kind: VoteKind) => void;
+  onPressOut: () => void;
   onPress: () => void;
   subtitle: string;
   iconColor: string;
@@ -436,7 +603,10 @@ function ActionButton({
 }) {
   return (
     <Pressable
+      delayLongPress={350}
+      onLongPress={() => onLongPress(icon === 'arrow-top-right-thick' ? 'up' : 'down')}
       onPress={onPress}
+      onPressOut={onPressOut}
       style={({ pressed }) => [
         styles.actionButtonWrap,
         pressed && styles.buttonPressed,
@@ -456,6 +626,50 @@ function ActionButton({
           {subtitle}
         </Text>
       </LinearGradient>
+    </Pressable>
+  );
+}
+
+function CalendarDayCell({
+  day,
+  onPress,
+}: {
+  day: CalendarDay;
+  onPress: () => void;
+}) {
+  const trendColor = day.summary.total > 0 ? getTrendColor(day.summary.score) : palette.textSoft;
+  const hasEntries = day.summary.total > 0;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.calendarCell,
+        {
+          backgroundColor: hasEntries ? getTrendSoft(day.summary.score) : 'rgba(255,255,255,0.64)',
+          borderColor: day.isToday
+            ? `${trendColor}50`
+            : hasEntries
+              ? `${trendColor}22`
+              : 'rgba(82, 92, 122, 0.08)',
+        },
+        pressed && styles.calendarCellPressed,
+      ]}
+    >
+      <Text
+        style={[
+          styles.calendarDayNumber,
+          { color: day.isToday ? trendColor : palette.text },
+        ]}
+      >
+        {day.dayNumber}
+      </Text>
+      <Text style={[styles.calendarDayScore, { color: trendColor }]}>
+        {hasEntries ? formatScore(day.summary.score) : ''}
+      </Text>
+      <Text style={styles.calendarDayCount}>
+        {hasEntries ? `${day.summary.total}건` : ''}
+      </Text>
     </Pressable>
   );
 }
@@ -592,19 +806,25 @@ function BestRecordRow({
 }
 
 function UndoSnackbar({
-  entry,
+  action,
   onUndo,
 }: {
-  entry: VoteEntry;
+  action: PendingUndoAction;
   onUndo: () => void;
 }) {
-  const isRise = entry.kind === 'up';
+  const isRise = action.kind === 'up';
   const accentColor = isRise ? palette.rise : palette.fall;
   const colors = isRise
     ? (['#FFE8EC', '#FFC3CC'] as const)
     : (['#EAF2FF', '#C7DDFF'] as const);
-  const title = isRise ? '상승 기록이 추가됐어요' : '하락 기록이 추가됐어요';
-  const subtitle = entry.note || (isRise ? '칭찬 기록이 저장됐어요.' : '주의 기록이 저장됐어요.');
+  const addedCount = action.entries.length;
+  const title = isRise
+    ? `상승 기록 ${addedCount}건이 추가됐어요`
+    : `하락 기록 ${addedCount}건이 추가됐어요`;
+  const subtitle =
+    addedCount > 1
+      ? '롱프레스 묶음 입력을 되돌릴 수 있어요.'
+      : action.note || (isRise ? '칭찬 기록이 저장됐어요.' : '주의 기록이 저장됐어요.');
   const icon = isRise ? 'arrow-top-right-thick' : 'arrow-bottom-left-thick';
 
   return (
@@ -636,6 +856,132 @@ function UndoSnackbar({
         </Pressable>
       </LinearGradient>
     </View>
+  );
+}
+
+function DayDetailModal({
+  entries,
+  onClose,
+  onReset,
+  selectedDate,
+  summary,
+  trendColor,
+}: {
+  entries: VoteEntry[];
+  onClose: () => void;
+  onReset: () => void;
+  selectedDate: Date | null;
+  summary: VoteSummary | null;
+  trendColor: string;
+}) {
+  return (
+    <Modal
+      animationType="fade"
+      onRequestClose={onClose}
+      transparent
+      visible={Boolean(selectedDate)}
+    >
+      <View style={styles.modalOverlay}>
+        <Pressable onPress={onClose} style={styles.modalBackdrop} />
+        <View style={styles.dayModalCard}>
+          <View style={styles.dayModalHeader}>
+            <View>
+              <Text style={styles.dayModalTitle}>일별 상세</Text>
+              <Text style={styles.dayModalDate}>
+                {selectedDate ? formatDateLabel(selectedDate) : ''}
+              </Text>
+            </View>
+            <Pressable onPress={onClose} style={styles.dayModalClose}>
+              <MaterialCommunityIcons color={palette.textMuted} name="close" size={20} />
+            </Pressable>
+          </View>
+
+          <View style={styles.dayModalStats}>
+            <View
+              style={[
+                styles.dayModalStat,
+                { backgroundColor: summary ? getTrendSoft(summary.score) : palette.panel },
+              ]}
+            >
+              <Text style={styles.dayModalStatLabel}>점수</Text>
+              <Text style={[styles.dayModalStatValue, { color: trendColor }]}>
+                {summary ? formatScore(summary.score) : '0'}
+              </Text>
+            </View>
+            <View style={styles.dayModalSummaryRow}>
+              <MetricPill
+                accentColor={palette.rise}
+                backgroundColor={palette.riseSoft}
+                icon="arrow-top-right-thick"
+                label="상승"
+                value={summary?.upCount ?? 0}
+              />
+              <MetricPill
+                accentColor={palette.fall}
+                backgroundColor={palette.fallSoft}
+                icon="arrow-bottom-left-thick"
+                label="하락"
+                value={summary?.downCount ?? 0}
+              />
+            </View>
+          </View>
+
+          <View style={styles.dayEntriesSection}>
+            <Text style={styles.dayEntriesTitle}>그날 남긴 기록</Text>
+            {entries.length === 0 ? (
+              <Text style={styles.emptyText}>이 날짜에는 아직 기록이 없어요.</Text>
+            ) : (
+              <View style={styles.dayEntriesList}>
+                {entries.slice(0, 6).map((entry) => (
+                  <View key={entry.id} style={styles.dayEntryRow}>
+                    <View
+                      style={[
+                        styles.dayEntryDot,
+                        {
+                          backgroundColor:
+                            entry.kind === 'up' ? palette.riseSoft : palette.fallSoft,
+                        },
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        color={entry.kind === 'up' ? palette.rise : palette.fall}
+                        name={
+                          entry.kind === 'up'
+                            ? 'arrow-top-right-thick'
+                            : 'arrow-bottom-left-thick'
+                        }
+                        size={14}
+                      />
+                    </View>
+                    <View style={styles.dayEntryCopy}>
+                      <Text style={styles.dayEntryTitle}>
+                        {entry.note || (entry.kind === 'up' ? '칭찬 기록' : '주의 기록')}
+                      </Text>
+                      <Text style={styles.dayEntryMeta}>
+                        {formatEntryTimestamp(entry.createdAt)}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
+          <Pressable
+            disabled={entries.length === 0}
+            onPress={onReset}
+            style={({ pressed }) => [
+              styles.resetButton,
+              entries.length === 0 && styles.resetButtonDisabled,
+              pressed && entries.length > 0 && styles.resetButtonPressed,
+            ]}
+          >
+            <MaterialCommunityIcons color="#FFFFFF" name="delete-alert-outline" size={18} />
+            <Text style={styles.resetButtonText}>이 날짜 기록 초기화</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -1014,6 +1360,65 @@ const styles = StyleSheet.create({
   bestGrid: {
     gap: 12,
   },
+  calendarCard: {
+    borderRadius: 28,
+    padding: 16,
+    backgroundColor: palette.panel,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: 12,
+  },
+  calendarWeekdays: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  calendarWeekday: {
+    width: '14.285%',
+    textAlign: 'center',
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  calendarCell: {
+    width: '13.1%',
+    aspectRatio: 0.9,
+    borderRadius: 18,
+    paddingTop: 10,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+  },
+  calendarCellPressed: {
+    opacity: 0.82,
+  },
+  calendarEmptyCell: {
+    width: '13.1%',
+    aspectRatio: 0.9,
+  },
+  calendarDayNumber: {
+    fontFamily: fonts.display,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  calendarDayScore: {
+    fontFamily: fonts.display,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  calendarDayCount: {
+    marginBottom: 8,
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: '700',
+  },
   statCard: {
     borderRadius: 28,
     padding: 20,
@@ -1224,6 +1629,151 @@ const styles = StyleSheet.create({
   },
   deletePressed: {
     opacity: 0.7,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 18,
+    backgroundColor: 'rgba(24, 30, 44, 0.18)',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  dayModalCard: {
+    borderRadius: 30,
+    padding: 20,
+    backgroundColor: '#FFFDFC',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.72)',
+    gap: 18,
+    shadowColor: '#5B6880',
+    shadowOpacity: 0.18,
+    shadowRadius: 22,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    elevation: 10,
+  },
+  dayModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  dayModalTitle: {
+    color: palette.text,
+    fontFamily: fonts.display,
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  dayModalDate: {
+    marginTop: 4,
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  dayModalClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.82)',
+  },
+  dayModalStats: {
+    gap: 12,
+  },
+  dayModalStat: {
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(82, 92, 122, 0.08)',
+  },
+  dayModalStatLabel: {
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  dayModalStatValue: {
+    marginTop: 6,
+    fontFamily: fonts.display,
+    fontSize: 32,
+    fontWeight: '800',
+  },
+  dayModalSummaryRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dayEntriesSection: {
+    gap: 10,
+  },
+  dayEntriesTitle: {
+    color: palette.text,
+    fontFamily: fonts.body,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  dayEntriesList: {
+    gap: 10,
+  },
+  dayEntryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(82, 92, 122, 0.08)',
+  },
+  dayEntryDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayEntryCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  dayEntryTitle: {
+    color: palette.text,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  dayEntryMeta: {
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 15,
+    borderRadius: 20,
+    backgroundColor: '#EA5B65',
+  },
+  resetButtonDisabled: {
+    opacity: 0.45,
+  },
+  resetButtonPressed: {
+    opacity: 0.82,
+  },
+  resetButtonText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: '800',
   },
   undoWrap: {
     position: 'absolute',

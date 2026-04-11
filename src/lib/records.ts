@@ -27,6 +27,13 @@ export interface PeriodBestRecords {
   downRecord: BestPeriodRecord | null;
 }
 
+export interface CalendarDay {
+  date: Date;
+  dayNumber: number;
+  isToday: boolean;
+  summary: VoteSummary;
+}
+
 export const STORAGE_KEY = '@thumbi/vote-entries';
 
 export function createVoteEntry(kind: VoteKind, note: string): VoteEntry {
@@ -61,6 +68,16 @@ export function sortEntries(entries: VoteEntry[]): VoteEntry[] {
 }
 
 export function getTodaySummary(
+  entries: VoteEntry[],
+  referenceDate: Date = new Date()
+): VoteSummary {
+  const start = startOfDay(referenceDate);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return getSummaryBetween(entries, start, end);
+}
+
+export function getDaySummary(
   entries: VoteEntry[],
   referenceDate: Date = new Date()
 ): VoteSummary {
@@ -200,6 +217,69 @@ export function getBestPeriodRecords(
     upRecord: bestUp ? toBestPeriodRecord(bestUp, 'up') : null,
     downRecord: bestDown ? toBestPeriodRecord(bestDown, 'down') : null,
   };
+}
+
+export function getEntriesForDay(
+  entries: VoteEntry[],
+  referenceDate: Date = new Date()
+): VoteEntry[] {
+  const start = startOfDay(referenceDate).getTime();
+  const end = new Date(startOfDay(referenceDate));
+  end.setDate(end.getDate() + 1);
+  const endTime = end.getTime();
+
+  return entries.filter((entry) => {
+    const createdAt = new Date(entry.createdAt).getTime();
+    return createdAt >= start && createdAt < endTime;
+  });
+}
+
+export function getMonthCalendar(
+  entries: VoteEntry[],
+  referenceDate: Date = new Date()
+): Array<CalendarDay | null> {
+  const monthStart = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    1
+  );
+  const monthEnd = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth() + 1,
+    0
+  );
+  const leadingEmptyCount = (monthStart.getDay() + 6) % 7;
+  const cells: Array<CalendarDay | null> = [];
+
+  for (let index = 0; index < leadingEmptyCount; index += 1) {
+    cells.push(null);
+  }
+
+  for (let day = 1; day <= monthEnd.getDate(); day += 1) {
+    const cellDate = new Date(
+      referenceDate.getFullYear(),
+      referenceDate.getMonth(),
+      day
+    );
+
+    cells.push({
+      date: cellDate,
+      dayNumber: day,
+      isToday: cellDate.toDateString() === new Date().toDateString(),
+      summary: getDaySummary(entries, cellDate),
+    });
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+
+  return cells;
+}
+
+export function formatDateLabel(referenceDate: Date = new Date()): string {
+  const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+  return `${referenceDate.getFullYear()}년 ${referenceDate.getMonth() + 1}월 ${referenceDate.getDate()}일 ${weekDays[referenceDate.getDay()]}요일`;
 }
 
 export function formatEntryTimestamp(
