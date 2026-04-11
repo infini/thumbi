@@ -77,6 +77,7 @@ function AppContent() {
     useState<PendingUndoAction | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('home');
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const skipNextPressRef = useRef(false);
   const holdBatchEntriesRef = useRef<VoteEntry[]>([]);
@@ -305,10 +306,21 @@ function AppContent() {
               />
             </View>
             <Text style={styles.brandText}>Thumbi</Text>
+            <Pressable
+              hitSlop={8}
+              onPress={() => setIsInfoOpen(true)}
+              style={({ pressed }) => [
+                styles.brandInfoButton,
+                pressed && styles.brandInfoPressed,
+              ]}
+            >
+              <MaterialCommunityIcons
+                color={palette.textMuted}
+                name="information-outline"
+                size={16}
+              />
+            </Pressable>
           </View>
-          <Text style={styles.storageHint}>
-            {isHydrated ? '이 기기 안에만 저장' : '기록 불러오는 중'}
-          </Text>
         </View>
       </View>
       <ScrollView
@@ -326,11 +338,7 @@ function AppContent() {
             >
               <View style={styles.heroHeader}>
                 <View style={styles.heroCopy}>
-                  <Text style={styles.eyebrow}>main input</Text>
-                  <Text style={styles.heroTitle}>메인 화면은 업다운 입력에 집중</Text>
-                  <Text style={styles.heroDescription}>
-                    탭하면 바로 기록하고, 길게 누르면 1초마다 5건씩 연속 입력할 수 있어요.
-                  </Text>
+                  <Text style={styles.heroTitle}>오늘 기록</Text>
                 </View>
                 <View
                   style={[
@@ -405,15 +413,6 @@ function AppContent() {
                   labelColor="#1F4F89"
                   subtitleColor="#517AB2"
                 />
-              </View>
-
-              <View style={styles.repeatHint}>
-                <MaterialCommunityIcons
-                  color={palette.sun}
-                  name="lightning-bolt"
-                  size={16}
-                />
-                <Text style={styles.repeatHintText}>길게 누르면 1초마다 5건씩 입력</Text>
               </View>
             </LinearGradient>
 
@@ -521,7 +520,7 @@ function AppContent() {
                   name="chart-bell-curve-cumulative"
                   size={16}
                 />
-                <Text style={styles.sectionChipText}>자동 집계</Text>
+                <Text style={styles.sectionChipText}>집계</Text>
               </View>
             </View>
 
@@ -556,11 +555,11 @@ function AppContent() {
                   월, 분기, 년 기준으로 가장 많이 오른 시기와 내린 시기를 봅니다.
                 </Text>
               </View>
-              <View style={styles.sectionChip}>
-                <MaterialCommunityIcons color={palette.textMuted} name="trophy" size={16} />
-                <Text style={styles.sectionChipText}>역대 최고</Text>
-              </View>
+            <View style={styles.sectionChip}>
+              <MaterialCommunityIcons color={palette.textMuted} name="trophy" size={16} />
+              <Text style={styles.sectionChipText}>최고</Text>
             </View>
+          </View>
 
             <View style={styles.bestGrid}>
               <BestRecordCard
@@ -602,6 +601,7 @@ function AppContent() {
         summary={selectedDaySummary}
         trendColor={selectedDayTrendColor}
       />
+      <InfoModal onClose={() => setIsInfoOpen(false)} visible={isInfoOpen} />
     </SafeAreaView>
   );
 }
@@ -955,6 +955,69 @@ function BottomTabBar({
   );
 }
 
+function InfoModal({
+  onClose,
+  visible,
+}: {
+  onClose: () => void;
+  visible: boolean;
+}) {
+  return (
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>
+      <View style={styles.modalOverlay}>
+        <Pressable onPress={onClose} style={styles.modalBackdrop} />
+        <View style={styles.infoModalCard}>
+          <View style={styles.dayModalHeader}>
+            <View>
+              <Text style={styles.dayModalTitle}>Thumbi</Text>
+              <Text style={styles.dayModalDate}>간단한 기록과 통계를 위한 앱</Text>
+            </View>
+            <Pressable onPress={onClose} style={styles.dayModalClose}>
+              <MaterialCommunityIcons color={palette.textMuted} name="close" size={20} />
+            </Pressable>
+          </View>
+
+          <View style={styles.infoList}>
+            <InfoRow
+              icon="thumb-up-outline"
+              text="업다운 탭에서 바로 기록하고 되돌릴 수 있어요."
+            />
+            <InfoRow
+              icon="lightning-bolt"
+              text="길게 누르면 1초마다 5건씩 연속 입력돼요."
+            />
+            <InfoRow
+              icon="calendar-month"
+              text="달력 탭에서 날짜별 기록을 보고 초기화할 수 있어요."
+            />
+            <InfoRow
+              icon="chart-bell-curve-cumulative"
+              text="통계 탭에서 주간, 월간, 분기 흐름과 최고 기록을 봅니다."
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function InfoRow({
+  icon,
+  text,
+}: {
+  icon: IconName;
+  text: string;
+}) {
+  return (
+    <View style={styles.infoRow}>
+      <View style={styles.infoRowIcon}>
+        <MaterialCommunityIcons color={palette.textMuted} name={icon} size={16} />
+      </View>
+      <Text style={styles.infoRowText}>{text}</Text>
+    </View>
+  );
+}
+
 function TabBarButton({
   accentColor,
   active,
@@ -1248,7 +1311,6 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
   brandBadge: {
     flexDirection: 'row',
@@ -1275,11 +1337,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  storageHint: {
-    color: palette.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 12,
-    fontWeight: '600',
+  brandInfoButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.78)',
+  },
+  brandInfoPressed: {
+    opacity: 0.7,
   },
   heroCard: {
     borderRadius: 32,
@@ -1304,26 +1371,12 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 6,
   },
-  eyebrow: {
-    color: palette.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-  },
   heroTitle: {
     color: palette.text,
     fontFamily: fonts.display,
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 34,
+    lineHeight: 38,
     fontWeight: '700',
-  },
-  heroDescription: {
-    color: palette.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
   },
   scoreBubble: {
     minWidth: 96,
@@ -1408,22 +1461,6 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     gap: 14,
-  },
-  repeatHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.62)',
-    alignSelf: 'flex-start',
-  },
-  repeatHintText: {
-    color: palette.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 12,
-    fontWeight: '700',
   },
   actionButtonWrap: {
     flex: 1,
@@ -1866,6 +1903,52 @@ const styles = StyleSheet.create({
   },
   dayEntriesList: {
     gap: 10,
+  },
+  infoModalCard: {
+    borderRadius: 30,
+    padding: 20,
+    backgroundColor: '#FFFDFC',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.72)',
+    gap: 18,
+    shadowColor: '#5B6880',
+    shadowOpacity: 0.18,
+    shadowRadius: 22,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    elevation: 10,
+  },
+  infoList: {
+    gap: 10,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(82, 92, 122, 0.08)',
+  },
+  infoRowIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  infoRowText: {
+    flex: 1,
+    color: palette.text,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
   },
   dayEntryRow: {
     flexDirection: 'row',
