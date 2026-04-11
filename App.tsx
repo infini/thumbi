@@ -327,15 +327,10 @@ function AppContent() {
     return (
       <>
         <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>월간 달력</Text>
-            <Text style={styles.sectionDescription}>
-              날짜를 눌러 그날 기록을 보고 필요하면 초기화할 수 있어요.
-            </Text>
-          </View>
+          <Text style={styles.sectionTitle}>월간 달력</Text>
         </View>
 
-        <View style={styles.calendarCard}>
+        <View style={[styles.calendarCard, styles.calendarCardWide]}>
           <View style={styles.calendarHeader}>
             <View>
               <Text style={styles.calendarTitle}>{formatMonthRange(calendarCursor)}</Text>
@@ -798,6 +793,9 @@ function CalendarDayCell({
       ]}
     >
       <Text
+        adjustsFontSizeToFit
+        minimumFontScale={0.72}
+        numberOfLines={1}
         style={[
           styles.calendarDayNumber,
           { color: day.isToday ? trendColor : palette.text },
@@ -805,10 +803,15 @@ function CalendarDayCell({
       >
         {day.dayNumber}
       </Text>
-      <Text style={[styles.calendarDayScore, { color: trendColor }]}>
+      <Text
+        adjustsFontSizeToFit
+        minimumFontScale={0.68}
+        numberOfLines={1}
+        style={[styles.calendarDayScore, { color: trendColor }]}
+      >
         {hasEntries ? formatScore(day.summary.score) : ''}
       </Text>
-      <Text style={styles.calendarDayCount}>
+      <Text numberOfLines={1} style={styles.calendarDayCount}>
         {hasEntries ? `${day.summary.total}건` : ''}
       </Text>
     </Pressable>
@@ -1743,6 +1746,11 @@ const styles = StyleSheet.create({
     borderColor: palette.border,
     gap: 12,
   },
+  calendarCardWide: {
+    marginHorizontal: -10,
+    paddingHorizontal: 10,
+    paddingVertical: 14,
+  },
   calendarHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1785,7 +1793,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   calendarWeekday: {
-    width: '14.285%',
+    width: '13.85%',
     textAlign: 'center',
     color: palette.textMuted,
     fontFamily: fonts.body,
@@ -1795,14 +1803,15 @@ const styles = StyleSheet.create({
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
+    rowGap: 8,
   },
   calendarCell: {
-    width: '13.1%',
-    aspectRatio: 0.9,
+    width: '13.85%',
+    aspectRatio: 0.94,
     borderRadius: 18,
-    paddingTop: 10,
-    paddingHorizontal: 6,
+    paddingTop: 8,
+    paddingHorizontal: 3,
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
@@ -1811,24 +1820,31 @@ const styles = StyleSheet.create({
     opacity: 0.82,
   },
   calendarEmptyCell: {
-    width: '13.1%',
-    aspectRatio: 0.9,
+    width: '13.85%',
+    aspectRatio: 0.94,
   },
   calendarDayNumber: {
     fontFamily: fonts.display,
-    fontSize: 15,
+    width: '100%',
+    textAlign: 'center',
+    fontSize: 14,
     fontWeight: '700',
   },
   calendarDayScore: {
     fontFamily: fonts.display,
-    fontSize: 12,
+    width: '100%',
+    textAlign: 'center',
+    fontSize: 10,
+    letterSpacing: -0.2,
     fontWeight: '800',
   },
   calendarDayCount: {
     marginBottom: 8,
+    width: '100%',
+    textAlign: 'center',
     color: palette.textMuted,
     fontFamily: fonts.body,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
   },
   statCard: {
@@ -2343,9 +2359,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 44,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    shadowColor: '#93A3BC',
-    shadowOpacity: 0.14,
+    backgroundColor: '#D7FAF4',
+    shadowColor: '#8CD8D0',
+    shadowOpacity: 0.2,
     shadowRadius: 10,
     shadowOffset: {
       width: 0,
