@@ -1,36 +1,59 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#FFF5E6"/>
-      <stop offset="0.5" stop-color="#E7F6EA"/>
-      <stop offset="1" stop-color="#DEEAFE"/>
+    <linearGradient id="bg" x1="286" y1="168" x2="738" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3E1"/>
+      <stop offset="0.52" stop-color="#E4F7EA"/>
+      <stop offset="1" stop-color="#D8E7FF"/>
     </linearGradient>
-    <radialGradient id="topGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(280 248) rotate(45) scale(248)">
-      <stop stop-color="#FFC9B6"/>
-      <stop offset="1" stop-color="#FFC9B6" stop-opacity="0"/>
+    <radialGradient id="peachGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(396 262) rotate(42) scale(184)">
+      <stop stop-color="#FFBEA8"/>
+      <stop offset="1" stop-color="#FFBEA8" stop-opacity="0"/>
     </radialGradient>
-    <filter id="tileShadow" x="250" y="136" width="524" height="552" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#7B8AA6" flood-opacity="0.16"/>
+    <linearGradient id="frontCard" x1="388" y1="248" x2="644" y2="510" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.98"/>
+      <stop offset="1" stop-color="#F3F8FF" stop-opacity="0.82"/>
+    </linearGradient>
+    <linearGradient id="backCard" x1="424" y1="246" x2="650" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8FB" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#D8E9FF" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="438" y1="320" x2="590" y2="472" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.84"/>
+      <stop offset="1" stop-color="white" stop-opacity="0.24"/>
+    </linearGradient>
+    <filter id="shadow" x="244" y="136" width="536" height="540" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#7183A0" flood-opacity="0.15"/>
     </filter>
   </defs>
 
-  <rect x="286" y="168" width="452" height="452" rx="120" fill="url(#bg)"/>
-  <rect x="286" y="168" width="452" height="452" rx="120" fill="url(#topGlow)"/>
-  <rect x="286.5" y="168.5" width="451" height="451" rx="119.5" stroke="white" stroke-opacity="0.48"/>
+  <rect x="286" y="168" width="452" height="452" rx="132" fill="url(#bg)"/>
+  <rect x="286" y="168" width="452" height="452" rx="132" fill="url(#peachGlow)"/>
+  <rect x="286.5" y="168.5" width="451" height="451" rx="131.5" stroke="white" stroke-opacity="0.48"/>
+  <ellipse cx="512" cy="232" rx="154" ry="62" fill="white" fill-opacity="0.36"/>
 
-  <g filter="url(#tileShadow)">
-    <rect x="366" y="248" width="292" height="292" rx="92" fill="white" fill-opacity="0.56"/>
-    <rect x="366.5" y="248.5" width="291" height="291" rx="91.5" stroke="white" stroke-opacity="0.6"/>
-    <ellipse cx="512" cy="292" rx="104" ry="46" fill="white" fill-opacity="0.38"/>
+  <g filter="url(#shadow)">
+    <g transform="rotate(8 554 402)">
+      <rect x="432" y="252" width="192" height="192" rx="62" fill="url(#backCard)"/>
+      <rect x="432.5" y="252.5" width="191" height="191" rx="61.5" stroke="white" stroke-opacity="0.56"/>
+    </g>
+    <g transform="rotate(-7 512 412)">
+      <rect x="358" y="256" width="308" height="308" rx="96" fill="url(#frontCard)"/>
+      <rect x="358.5" y="256.5" width="307" height="307" rx="95.5" stroke="white" stroke-opacity="0.68"/>
+      <ellipse cx="512" cy="292" rx="120" ry="46" fill="white" fill-opacity="0.52"/>
+      <circle cx="512" cy="414" r="76" fill="url(#ring)"/>
+    </g>
   </g>
 
-  <circle cx="430" cy="502" r="38" fill="#86DCA3"/>
-  <circle cx="616" cy="300" r="34" fill="#F1A089"/>
-  <path d="M430 480V524" stroke="white" stroke-width="12" stroke-linecap="round"/>
-  <path d="M408 502H452" stroke="white" stroke-width="12" stroke-linecap="round"/>
-  <path d="M594 300H638" stroke="white" stroke-width="10" stroke-linecap="round"/>
+  <g transform="rotate(-7 512 412)">
+    <text x="512" y="474" text-anchor="middle" fill="#111111" font-family="Apple Color Emoji, sans-serif" font-size="172">👍</text>
+  </g>
 
-  <text x="512" y="450" text-anchor="middle" fill="#111111" font-family="Apple Color Emoji, sans-serif" font-size="154">👍</text>
+  <circle cx="404" cy="506" r="36" fill="#78DB9F"/>
+  <circle cx="616" cy="304" r="32" fill="#EE967D"/>
+  <path d="M404 484V528" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M382 506H426" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M592 304H640" stroke="white" stroke-width="10" stroke-linecap="round"/>
+  <path d="M396 258L404 282L428 290L404 298L396 322L388 298L364 290L388 282L396 258Z" fill="#FFD46C"/>
 
   <text x="512" y="742" text-anchor="middle" fill="#253046" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="88" font-weight="700">Thumbi</text>
   <text x="512" y="804" text-anchor="middle" fill="#71809A" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="600" letter-spacing="2">daily thumbs and tally</text>
