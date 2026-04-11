@@ -811,9 +811,6 @@ function CalendarDayCell({
       >
         {hasEntries ? formatScore(day.summary.score) : ''}
       </Text>
-      <Text numberOfLines={1} style={styles.calendarDayCount}>
-        {hasEntries ? `${day.summary.total}건` : ''}
-      </Text>
     </Pressable>
   );
 }
@@ -1749,7 +1746,8 @@ const styles = StyleSheet.create({
   calendarCardWide: {
     marginHorizontal: -10,
     paddingHorizontal: 10,
-    paddingVertical: 14,
+    paddingTop: 14,
+    paddingBottom: 18,
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -1804,13 +1802,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    rowGap: 8,
+    rowGap: 10,
   },
   calendarCell: {
     width: '13.85%',
-    aspectRatio: 0.94,
+    height: 78,
     borderRadius: 18,
-    paddingTop: 8,
+    paddingTop: 9,
+    paddingBottom: 8,
     paddingHorizontal: 3,
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1821,7 +1820,7 @@ const styles = StyleSheet.create({
   },
   calendarEmptyCell: {
     width: '13.85%',
-    aspectRatio: 0.94,
+    height: 78,
   },
   calendarDayNumber: {
     fontFamily: fonts.display,
@@ -1834,18 +1833,9 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     width: '100%',
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: -0.2,
     fontWeight: '800',
-  },
-  calendarDayCount: {
-    marginBottom: 8,
-    width: '100%',
-    textAlign: 'center',
-    color: palette.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 9,
-    fontWeight: '700',
   },
   statCard: {
     width: '48%',
