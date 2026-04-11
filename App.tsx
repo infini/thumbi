@@ -36,11 +36,13 @@ import {
 import { fonts, palette } from './src/theme';
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
+const UNDO_TIMEOUT_MS = 5000;
 
 export default function App() {
   const [entries, setEntries] = useState<VoteEntry[]>([]);
   const [draftNote, setDraftNote] = useState('');
   const [isHydrated, setIsHydrated] = useState(false);
+  const [pendingUndoEntry, setPendingUndoEntry] = useState<VoteEntry | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -90,6 +92,20 @@ export default function App() {
     });
   }, [entries, isHydrated]);
 
+  useEffect(() => {
+    if (!pendingUndoEntry) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setPendingUndoEntry(null);
+    }, UNDO_TIMEOUT_MS);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [pendingUndoEntry]);
+
   const now = new Date();
   const todaySummary = getTodaySummary(entries, now);
   const weekSummary = getWeekSummary(entries, now);
@@ -104,7 +120,19 @@ export default function App() {
   function handleAddEntry(kind: VoteKind) {
     const nextEntry = createVoteEntry(kind, draftNote.trim());
     setEntries((currentEntries) => [nextEntry, ...currentEntries]);
+    setPendingUndoEntry(nextEntry);
     setDraftNote('');
+  }
+
+  function handleUndoAdd() {
+    if (!pendingUndoEntry) {
+      return;
+    }
+
+    setEntries((currentEntries) =>
+      currentEntries.filter((entry) => entry.id !== pendingUndoEntry.id)
+    );
+    setPendingUndoEntry(null);
   }
 
   function handleDeleteEntry(entry: VoteEntry) {
@@ -354,6 +382,9 @@ export default function App() {
           )}
         </View>
       </ScrollView>
+      {pendingUndoEntry ? (
+        <UndoSnackbar entry={pendingUndoEntry} onUndo={handleUndoAdd} />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -560,6 +591,54 @@ function BestRecordRow({
   );
 }
 
+function UndoSnackbar({
+  entry,
+  onUndo,
+}: {
+  entry: VoteEntry;
+  onUndo: () => void;
+}) {
+  const isRise = entry.kind === 'up';
+  const accentColor = isRise ? palette.rise : palette.fall;
+  const colors = isRise
+    ? (['#FFE8EC', '#FFC3CC'] as const)
+    : (['#EAF2FF', '#C7DDFF'] as const);
+  const title = isRise ? '상승 기록이 추가됐어요' : '하락 기록이 추가됐어요';
+  const subtitle = entry.note || (isRise ? '칭찬 기록이 저장됐어요.' : '주의 기록이 저장됐어요.');
+  const icon = isRise ? 'arrow-top-right-thick' : 'arrow-bottom-left-thick';
+
+  return (
+    <View pointerEvents="box-none" style={styles.undoWrap}>
+      <LinearGradient
+        colors={colors}
+        end={{ x: 1, y: 1 }}
+        start={{ x: 0, y: 0 }}
+        style={[styles.undoCard, { borderColor: `${accentColor}24` }]}
+      >
+        <View style={[styles.undoIcon, { backgroundColor: `${accentColor}18` }]}>
+          <MaterialCommunityIcons color={accentColor} name={icon} size={20} />
+        </View>
+
+        <View style={styles.undoCopy}>
+          <Text numberOfLines={1} style={styles.undoTitle}>
+            {title}
+          </Text>
+          <Text numberOfLines={1} style={styles.undoSubtitle}>
+            {subtitle}
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={onUndo}
+          style={({ pressed }) => [styles.undoButton, pressed && styles.undoPressed]}
+        >
+          <Text style={[styles.undoButtonText, { color: accentColor }]}>되돌리기</Text>
+        </Pressable>
+      </LinearGradient>
+    </View>
+  );
+}
+
 function EntryRow({
   entry,
   onDelete,
@@ -686,7 +765,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 36,
+    paddingBottom: 120,
     gap: 18,
   },
   topBar: {
@@ -1145,5 +1224,65 @@ const styles = StyleSheet.create({
   },
   deletePressed: {
     opacity: 0.7,
+  },
+  undoWrap: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 18,
+  },
+  undoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 24,
+    borderWidth: 1,
+    shadowColor: '#6F7E99',
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    elevation: 10,
+  },
+  undoIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  undoCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  undoTitle: {
+    color: palette.text,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  undoSubtitle: {
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  undoButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.84)',
+  },
+  undoPressed: {
+    opacity: 0.72,
+  },
+  undoButtonText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: '800',
   },
 });
