@@ -254,7 +254,7 @@ function AppContent() {
     {
       icon: 'calendar-week',
       key: 'week',
-      title: '주간',
+      title: '주간 챠트',
       period: formatCompactWeekRange(now),
       summary: weekSummary,
       accentColor: getTrendColor(weekSummary.score, palette),
@@ -262,7 +262,7 @@ function AppContent() {
     {
       icon: 'calendar-month',
       key: 'month',
-      title: '월간',
+      title: '월간 챠트',
       period: formatCompactMonthRange(now),
       summary: monthSummary,
       accentColor: getTrendColor(monthSummary.score, palette),
@@ -270,7 +270,7 @@ function AppContent() {
     {
       icon: 'calendar-range',
       key: 'quarter',
-      title: '분기',
+      title: '분기 챠트',
       period: formatCompactQuarterRange(now),
       summary: quarterSummary,
       accentColor: getTrendColor(quarterSummary.score, palette),
@@ -278,7 +278,7 @@ function AppContent() {
     {
       icon: 'calendar',
       key: 'year',
-      title: '연간',
+      title: '연간 챠트',
       period: formatCompactYearRange(now),
       summary: yearSummary,
       accentColor: getTrendColor(yearSummary.score, palette),
@@ -1366,14 +1366,13 @@ function StatsDetailModal({
                     name={selectedCard.icon}
                     size={16}
                   />
-                  <Text style={styles.statsModalHeroBadgeText}>Score Flow</Text>
                 </View>
                 <Pressable onPress={onClose} style={styles.statsModalClose}>
                   <MaterialCommunityIcons color={palette.textMuted} name="close" size={20} />
                 </Pressable>
               </View>
 
-              <Text style={styles.statsModalTitle}>{selectedCard.title} 통계</Text>
+              <Text style={styles.statsModalTitle}>{selectedCard.title}</Text>
               <Text style={styles.statsModalPeriod}>{selectedCard.period}</Text>
 
               <View style={styles.statsModalHeroMetrics}>
@@ -1459,7 +1458,7 @@ function StatsDetailModal({
               period={selectedCard.period}
               series={series}
               summary={selectedCard.summary}
-              title={`${selectedCard.title} 점수 흐름`}
+              title="점수 흐름"
             />
           </ScrollView>
         </Animated.View>
@@ -2769,20 +2768,12 @@ function createStyles(palette: Palette) {
   statsModalHeroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
     backgroundColor: isDark ? 'rgba(11,17,16,0.32)' : 'rgba(255,255,255,0.68)',
     borderWidth: 1,
     borderColor: isDark ? 'rgba(223,248,244,0.08)' : 'rgba(12,18,16,0.06)',
-  },
-  statsModalHeroBadgeText: {
-    color: palette.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.2,
   },
   statsModalClose: {
     width: 38,
