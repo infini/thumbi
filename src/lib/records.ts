@@ -15,6 +15,15 @@ export interface VoteSummary {
   total: number;
 }
 
+export type ScoreSeriesPeriod = 'week' | 'month' | 'quarter' | 'year';
+
+export interface ScoreSeriesPoint extends VoteSummary {
+  key: string;
+  label: string;
+  axisLabel: string;
+  showAxisLabel: boolean;
+}
+
 export type PeriodUnit = 'month' | 'quarter' | 'year';
 
 export interface BestPeriodRecord {
@@ -36,6 +45,7 @@ export interface CalendarDay {
 }
 
 export const STORAGE_KEY = '@thumbi/vote-entries';
+const WEEKDAY_AXIS_LABELS = ['월', '화', '수', '목', '금', '토', '일'] as const;
 
 export function createVoteEntry(
   kind: VoteKind,
@@ -140,6 +150,87 @@ export function getYearSummary(
   const start = new Date(referenceDate.getFullYear(), 0, 1);
   const end = new Date(referenceDate.getFullYear() + 1, 0, 1);
   return getSummaryBetween(entries, start, end);
+}
+
+export function getScoreSeries(
+  entries: VoteEntry[],
+  period: ScoreSeriesPeriod,
+  referenceDate: Date = new Date()
+): ScoreSeriesPoint[] {
+  if (period === 'week') {
+    const start = getStartOfWeek(referenceDate);
+
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      const summary = getDaySummary(entries, date);
+
+      return {
+        key: `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`,
+        label: WEEKDAY_AXIS_LABELS[index],
+        axisLabel: WEEKDAY_AXIS_LABELS[index],
+        showAxisLabel: true,
+        ...summary,
+      };
+    });
+  }
+
+  if (period === 'month') {
+    const totalDays = new Date(
+      referenceDate.getFullYear(),
+      referenceDate.getMonth() + 1,
+      0
+    ).getDate();
+    const axisDays = getMonthAxisDays(totalDays);
+
+    return Array.from({ length: totalDays }, (_, index) => {
+      const day = index + 1;
+      const date = new Date(
+        referenceDate.getFullYear(),
+        referenceDate.getMonth(),
+        day
+      );
+      const summary = getDaySummary(entries, date);
+
+      return {
+        key: `${date.getFullYear()}-${date.getMonth() + 1}-${day}`,
+        label: `${date.getMonth() + 1}/${day}`,
+        axisLabel: `${day}`,
+        showAxisLabel: axisDays.has(day),
+        ...summary,
+      };
+    });
+  }
+
+  if (period === 'quarter') {
+    const start = getQuarterStart(referenceDate);
+
+    return Array.from({ length: 3 }, (_, index) => {
+      const date = new Date(start.getFullYear(), start.getMonth() + index, 1);
+      const summary = getMonthSummary(entries, date);
+
+      return {
+        key: `${date.getFullYear()}-${date.getMonth() + 1}`,
+        label: `${date.getMonth() + 1}월`,
+        axisLabel: `${date.getMonth() + 1}월`,
+        showAxisLabel: true,
+        ...summary,
+      };
+    });
+  }
+
+  return Array.from({ length: 12 }, (_, index) => {
+    const date = new Date(referenceDate.getFullYear(), index, 1);
+    const summary = getMonthSummary(entries, date);
+
+    return {
+      key: `${date.getFullYear()}-${date.getMonth() + 1}`,
+      label: `${date.getMonth() + 1}월`,
+      axisLabel: `${date.getMonth() + 1}`,
+      showAxisLabel: true,
+      ...summary,
+    };
+  });
 }
 
 export function getStartOfWeek(date: Date): Date {
@@ -415,6 +506,16 @@ function toBestPeriodRecord(
       total: bucket.total,
     },
   };
+}
+
+function getMonthAxisDays(totalDays: number): Set<number> {
+  return new Set([
+    1,
+    Math.max(1, Math.round(totalDays * 0.25)),
+    Math.max(1, Math.round(totalDays * 0.5)),
+    Math.max(1, Math.round(totalDays * 0.75)),
+    totalDays,
+  ]);
 }
 
 function startOfDay(date: Date): Date {

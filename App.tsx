@@ -46,12 +46,15 @@ import {
   getMonthCalendar,
   getMonthSummary,
   getQuarterSummary,
+  getScoreSeries,
   getTodaySummary,
   getWeekSummary,
   getYearSummary,
   isVoteEntry,
   sortEntries,
   STORAGE_KEY,
+  type ScoreSeriesPeriod,
+  type ScoreSeriesPoint,
   type VoteEntry,
   type VoteKind,
   type VoteSummary,
@@ -86,6 +89,14 @@ interface RecentRecordGroup {
   note: string;
   createdAt: string;
   points: number;
+}
+
+interface StatsCardData {
+  key: ScoreSeriesPeriod;
+  title: string;
+  period: string;
+  summary: VoteSummary;
+  accentColor: string;
 }
 
 type AppStyles = ReturnType<typeof createStyles>;
@@ -138,6 +149,8 @@ function AppContent() {
     useState<PendingUndoAction | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('home');
+  const [selectedStatsPeriod, setSelectedStatsPeriod] =
+    useState<ScoreSeriesPeriod>('week');
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [calendarCursor, setCalendarCursor] = useState(() => new Date());
   const pagerRef = useRef<PagerView | null>(null);
@@ -233,6 +246,39 @@ function AppContent() {
   const selectedDayTrendColor = selectedDaySummary
     ? getTrendColor(selectedDaySummary.score, palette)
     : palette.text;
+  const statsCards: StatsCardData[] = [
+    {
+      key: 'week',
+      title: '주간',
+      period: formatCompactWeekRange(now),
+      summary: weekSummary,
+      accentColor: getTrendColor(weekSummary.score, palette),
+    },
+    {
+      key: 'month',
+      title: '월간',
+      period: formatCompactMonthRange(now),
+      summary: monthSummary,
+      accentColor: getTrendColor(monthSummary.score, palette),
+    },
+    {
+      key: 'quarter',
+      title: '분기',
+      period: formatCompactQuarterRange(now),
+      summary: quarterSummary,
+      accentColor: getTrendColor(quarterSummary.score, palette),
+    },
+    {
+      key: 'year',
+      title: '연간',
+      period: formatCompactYearRange(now),
+      summary: yearSummary,
+      accentColor: getTrendColor(yearSummary.score, palette),
+    },
+  ];
+  const selectedStatCard =
+    statsCards.find((card) => card.key === selectedStatsPeriod) ?? statsCards[0];
+  const selectedScoreSeries = getScoreSeries(entries, selectedStatCard.key, now);
   const scrollBottomPadding = TAB_BAR_HEIGHT + insets.bottom + 72;
 
   function getTabIndex(tab: TabKey): number {
@@ -444,31 +490,26 @@ function AppContent() {
         </View>
 
         <View style={styles.statsGrid}>
-          <StatCard
-            accentColor={getTrendColor(weekSummary.score, palette)}
-            period={formatCompactWeekRange(now)}
-            summary={weekSummary}
-            title="주간"
-          />
-          <StatCard
-            accentColor={getTrendColor(monthSummary.score, palette)}
-            period={formatCompactMonthRange(now)}
-            summary={monthSummary}
-            title="월간"
-          />
-          <StatCard
-            accentColor={getTrendColor(quarterSummary.score, palette)}
-            period={formatCompactQuarterRange(now)}
-            summary={quarterSummary}
-            title="분기"
-          />
-          <StatCard
-            accentColor={getTrendColor(yearSummary.score, palette)}
-            period={formatCompactYearRange(now)}
-            summary={yearSummary}
-            title="연간"
-          />
+          {statsCards.map((card) => (
+            <StatCard
+              accentColor={card.accentColor}
+              active={selectedStatCard.key === card.key}
+              key={card.key}
+              onPress={() => setSelectedStatsPeriod(card.key)}
+              period={card.period}
+              summary={card.summary}
+              title={card.title}
+            />
+          ))}
         </View>
+
+        <ScoreChartCard
+          accentColor={selectedStatCard.accentColor}
+          period={selectedStatCard.period}
+          series={selectedScoreSeries}
+          summary={selectedStatCard.summary}
+          title={`${selectedStatCard.title} 점수 흐름`}
+        />
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>최고 기록</Text>
@@ -909,11 +950,15 @@ function CalendarNavButton({
 
 function StatCard({
   accentColor,
+  active,
+  onPress,
   period,
   summary,
   title,
 }: {
   accentColor: string;
+  active: boolean;
+  onPress: () => void;
   period: string;
   summary: VoteSummary;
   title: string;
@@ -921,13 +966,16 @@ function StatCard({
   const { palette, styles } = useAppTheme();
 
   return (
-    <View
-      style={[
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
         styles.statCard,
         {
-          borderColor: `${accentColor}20`,
+          borderColor: active ? `${accentColor}52` : `${accentColor}20`,
           backgroundColor: getTrendSurface(summary.score, palette),
         },
+        active && styles.statCardActive,
+        pressed && styles.statCardPressed,
       ]}
     >
       <View style={styles.statCardTop}>
@@ -949,6 +997,253 @@ function StatCard({
           {`이건 좀.. ${summary.downCount}`}
         </Text>
       </View>
+
+      <View style={styles.statCardFooter}>
+        <Text
+          style={[
+            styles.statCardHint,
+            { color: active ? accentColor : palette.textMuted },
+          ]}
+        >
+          {active ? '선택됨' : '눌러서 그래프 보기'}
+        </Text>
+        <MaterialCommunityIcons
+          color={active ? accentColor : palette.textSoft}
+          name={active ? 'chart-line' : 'chevron-right'}
+          size={16}
+        />
+      </View>
+    </Pressable>
+  );
+}
+
+function ScoreChartCard({
+  accentColor,
+  period,
+  series,
+  summary,
+  title,
+}: {
+  accentColor: string;
+  period: string;
+  series: ScoreSeriesPoint[];
+  summary: VoteSummary;
+  title: string;
+}) {
+  const { isDark, palette, styles } = useAppTheme();
+  const hasEntries = series.some((point) => point.total > 0);
+  const highestPoint = series.reduce<ScoreSeriesPoint | null>((best, point) => {
+    if (point.total === 0) {
+      return best;
+    }
+
+    if (!best || point.score > best.score) {
+      return point;
+    }
+
+    return best;
+  }, null);
+  const lowestPoint = series.reduce<ScoreSeriesPoint | null>((best, point) => {
+    if (point.total === 0) {
+      return best;
+    }
+
+    if (!best || point.score < best.score) {
+      return point;
+    }
+
+    return best;
+  }, null);
+  const maxAbsScore = Math.max(1, ...series.map((point) => Math.abs(point.score)));
+  const barWidth = series.length > 20 ? 14 : series.length > 12 ? 18 : 24;
+  const columnGap = series.length > 20 ? 6 : 8;
+  const plotWidth = Math.max(
+    series.length * barWidth + Math.max(series.length - 1, 0) * columnGap,
+    280
+  );
+  const summaryColor = summary.total > 0 ? accentColor : palette.text;
+  const highestColor = highestPoint
+    ? getTrendColor(highestPoint.score, palette)
+    : palette.text;
+  const lowestColor = lowestPoint
+    ? getTrendColor(lowestPoint.score, palette)
+    : palette.text;
+
+  return (
+    <View
+      style={[
+        styles.scoreChartCard,
+        {
+          borderColor: `${summaryColor}1F`,
+          backgroundColor: getTrendSurface(summary.score, palette),
+        },
+      ]}
+    >
+      <View style={styles.scoreChartHeader}>
+        <View style={styles.scoreChartCopy}>
+          <Text style={styles.scoreChartTitle}>{title}</Text>
+          <Text style={styles.scoreChartSubtitle}>{period}</Text>
+        </View>
+
+        <View
+          style={[
+            styles.scoreChartScoreBadge,
+            {
+              backgroundColor: getTrendSoft(summary.score, palette),
+              borderColor: `${summaryColor}1F`,
+            },
+          ]}
+        >
+          <Text style={styles.scoreChartScoreLabel}>기간 점수</Text>
+          <Text style={[styles.scoreChartScoreValue, { color: summaryColor }]}>
+            {formatScore(summary.score)}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.scoreChartFrame}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.scoreChartScroll}
+        >
+          <View style={[styles.scoreChartPlot, { width: plotWidth }]}>
+            <View
+              style={[
+                styles.scoreChartBaseline,
+                {
+                  backgroundColor: isDark
+                    ? 'rgba(223, 248, 244, 0.12)'
+                    : 'rgba(12, 18, 16, 0.10)',
+                },
+              ]}
+            />
+            {series.map((point, index) => {
+              const barColor = getTrendColor(point.score, palette);
+              const hasActivity = point.total > 0;
+              const barHeight =
+                !hasActivity || point.score === 0
+                  ? 0
+                  : Math.max(
+                      10,
+                      Math.round((Math.abs(point.score) / maxAbsScore) * 56)
+                    );
+
+              return (
+                <View
+                  key={point.key}
+                  style={[
+                    styles.scoreChartColumn,
+                    {
+                      width: barWidth,
+                      marginRight: index === series.length - 1 ? 0 : columnGap,
+                    },
+                  ]}
+                >
+                  <View style={styles.scoreChartTopZone}>
+                    {point.score > 0 ? (
+                      <View
+                        style={[
+                          styles.scoreChartBar,
+                          styles.scoreChartBarPositive,
+                          {
+                            height: barHeight,
+                            backgroundColor: barColor,
+                            borderColor: `${barColor}3A`,
+                          },
+                        ]}
+                      />
+                    ) : null}
+                  </View>
+
+                  <View style={styles.scoreChartCenterZone}>
+                    {hasActivity ? (
+                      <View
+                        style={[
+                          point.score === 0
+                            ? styles.scoreChartZeroBar
+                            : styles.scoreChartActivityDot,
+                          {
+                            backgroundColor:
+                              point.score === 0 ? palette.textMuted : `${barColor}44`,
+                          },
+                        ]}
+                      />
+                    ) : (
+                      <View style={styles.scoreChartIdleDot} />
+                    )}
+                  </View>
+
+                  <View style={styles.scoreChartBottomZone}>
+                    {point.score < 0 ? (
+                      <View
+                        style={[
+                          styles.scoreChartBar,
+                          styles.scoreChartBarNegative,
+                          {
+                            height: barHeight,
+                            backgroundColor: barColor,
+                            borderColor: `${barColor}3A`,
+                          },
+                        ]}
+                      />
+                    ) : null}
+                  </View>
+
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.scoreChartAxisLabel,
+                      !point.showAxisLabel && styles.scoreChartAxisLabelHidden,
+                    ]}
+                  >
+                    {point.showAxisLabel ? point.axisLabel : ' '}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+      </View>
+
+      {hasEntries ? (
+        <View style={styles.scoreChartInsightRow}>
+          {highestPoint ? (
+            <View
+              style={[
+                styles.scoreChartInsightChip,
+                {
+                  backgroundColor: `${highestColor}14`,
+                  borderColor: `${highestColor}24`,
+                },
+              ]}
+            >
+              <Text style={styles.scoreChartInsightLabel}>최고</Text>
+              <Text style={[styles.scoreChartInsightValue, { color: highestColor }]}>
+                {`${formatScore(highestPoint.score)} · ${highestPoint.label}`}
+              </Text>
+            </View>
+          ) : null}
+          {lowestPoint ? (
+            <View
+              style={[
+                styles.scoreChartInsightChip,
+                {
+                  backgroundColor: `${lowestColor}14`,
+                  borderColor: `${lowestColor}24`,
+                },
+              ]}
+            >
+              <Text style={styles.scoreChartInsightLabel}>최저</Text>
+              <Text style={[styles.scoreChartInsightValue, { color: lowestColor }]}>
+                {`${formatScore(lowestPoint.score)} · ${lowestPoint.label}`}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : (
+        <Text style={styles.emptyText}>이 기간에는 아직 기록이 없어서 그래프가 비어 있어요.</Text>
+      )}
     </View>
   );
 }
@@ -1964,12 +2259,25 @@ function createStyles(palette: Palette) {
   },
   statCard: {
     width: '48%',
-    minHeight: 138,
+    minHeight: 156,
     borderRadius: 22,
     paddingHorizontal: 14,
     paddingVertical: 13,
     borderWidth: 1,
     gap: 12,
+  },
+  statCardActive: {
+    shadowColor: '#5B6880',
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    elevation: 4,
+  },
+  statCardPressed: {
+    opacity: 0.86,
   },
   statCardTop: {
     flexDirection: 'row',
@@ -2005,6 +2313,18 @@ function createStyles(palette: Palette) {
     gap: 8,
     flexWrap: 'wrap',
   },
+  statCardFooter: {
+    marginTop: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  statCardHint: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '700',
+  },
   statDetail: {
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -2012,6 +2332,165 @@ function createStyles(palette: Palette) {
     overflow: 'hidden',
     backgroundColor: isDark ? 'rgba(25,33,31,0.94)' : 'rgba(255,255,255,0.78)',
     color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  scoreChartCard: {
+    marginTop: 14,
+    borderRadius: 28,
+    padding: 18,
+    borderWidth: 1,
+    gap: 16,
+  },
+  scoreChartHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  scoreChartCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  scoreChartTitle: {
+    color: palette.text,
+    fontFamily: fonts.display,
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  scoreChartSubtitle: {
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  scoreChartScoreBadge: {
+    minWidth: 88,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'flex-end',
+    gap: 3,
+  },
+  scoreChartScoreLabel: {
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  scoreChartScoreValue: {
+    fontFamily: fonts.display,
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  scoreChartFrame: {
+    marginHorizontal: -4,
+  },
+  scoreChartScroll: {
+    flexGrow: 0,
+  },
+  scoreChartPlot: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    minHeight: 150,
+    paddingTop: 4,
+  },
+  scoreChartBaseline: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 60,
+    height: 1,
+  },
+  scoreChartColumn: {
+    alignItems: 'center',
+  },
+  scoreChartTopZone: {
+    height: 56,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  scoreChartCenterZone: {
+    height: 8,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scoreChartBottomZone: {
+    height: 56,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  scoreChartBar: {
+    width: '100%',
+    borderWidth: 1,
+  },
+  scoreChartBarPositive: {
+    borderTopLeftRadius: 999,
+    borderTopRightRadius: 999,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+  },
+  scoreChartBarNegative: {
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderBottomLeftRadius: 999,
+    borderBottomRightRadius: 999,
+  },
+  scoreChartActivityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  scoreChartZeroBar: {
+    width: '100%',
+    height: 4,
+    borderRadius: 999,
+  },
+  scoreChartIdleDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: isDark ? 'rgba(223, 248, 244, 0.08)' : 'rgba(12, 18, 16, 0.08)',
+  },
+  scoreChartAxisLabel: {
+    marginTop: 10,
+    width: '100%',
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  scoreChartAxisLabelHidden: {
+    color: 'transparent',
+  },
+  scoreChartInsightRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  scoreChartInsightChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  scoreChartInsightLabel: {
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  scoreChartInsightValue: {
     fontFamily: fonts.body,
     fontSize: 12,
     fontWeight: '700',
