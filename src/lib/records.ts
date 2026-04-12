@@ -203,20 +203,43 @@ export function getScoreSeries(
   }
 
   if (period === 'quarter') {
-    const start = getQuarterStart(referenceDate);
+    const quarterStart = getQuarterStart(referenceDate);
+    const quarterEnd = new Date(
+      quarterStart.getFullYear(),
+      quarterStart.getMonth() + 3,
+      1
+    );
+    const firstWeekStart = getStartOfWeek(quarterStart);
+    const points: ScoreSeriesPoint[] = [];
+    let cursor = firstWeekStart;
 
-    return Array.from({ length: 3 }, (_, index) => {
-      const date = new Date(start.getFullYear(), start.getMonth() + index, 1);
-      const summary = getMonthSummary(entries, date);
+    while (cursor.getTime() < quarterEnd.getTime()) {
+      const nextCursor = new Date(cursor);
+      nextCursor.setDate(nextCursor.getDate() + 7);
 
-      return {
-        key: `${date.getFullYear()}-${date.getMonth() + 1}`,
-        label: `${date.getMonth() + 1}월`,
-        axisLabel: `${date.getMonth() + 1}월`,
-        showAxisLabel: true,
+      const rangeStart = maxDate(cursor, quarterStart);
+      const rangeEnd = minDate(nextCursor, quarterEnd);
+      const rangeLastDay = new Date(rangeEnd);
+      rangeLastDay.setDate(rangeLastDay.getDate() - 1);
+      const summary = getSummaryBetween(entries, rangeStart, rangeEnd);
+
+      points.push({
+        key: `${rangeStart.getFullYear()}-${rangeStart.getMonth() + 1}-${rangeStart.getDate()}`,
+        label: formatCompactDateRange(rangeStart, rangeLastDay),
+        axisLabel: `${rangeStart.getMonth() + 1}/${rangeStart.getDate()}`,
+        showAxisLabel: false,
         ...summary,
-      };
-    });
+      });
+
+      cursor = nextCursor;
+    }
+
+    const axisIndexes = getSparseAxisIndexes(points.length);
+
+    return points.map((point, index) => ({
+      ...point,
+      showAxisLabel: axisIndexes.has(index),
+    }));
   }
 
   return Array.from({ length: 12 }, (_, index) => {
@@ -516,6 +539,42 @@ function getMonthAxisDays(totalDays: number): Set<number> {
     Math.max(1, Math.round(totalDays * 0.75)),
     totalDays,
   ]);
+}
+
+function getSparseAxisIndexes(totalCount: number): Set<number> {
+  if (totalCount <= 8) {
+    return new Set(Array.from({ length: totalCount }, (_, index) => index));
+  }
+
+  const step = totalCount <= 14 ? 2 : 3;
+  const indexes = new Set<number>();
+
+  for (let index = 0; index < totalCount; index += step) {
+    indexes.add(index);
+  }
+
+  indexes.add(totalCount - 1);
+  return indexes;
+}
+
+function formatCompactDateRange(start: Date, end: Date): string {
+  if (start.toDateString() === end.toDateString()) {
+    return `${start.getMonth() + 1}/${start.getDate()}`;
+  }
+
+  if (start.getMonth() === end.getMonth()) {
+    return `${start.getMonth() + 1}/${start.getDate()}-${end.getDate()}`;
+  }
+
+  return `${start.getMonth() + 1}/${start.getDate()}-${end.getMonth() + 1}/${end.getDate()}`;
+}
+
+function minDate(left: Date, right: Date): Date {
+  return new Date(Math.min(left.getTime(), right.getTime()));
+}
+
+function maxDate(left: Date, right: Date): Date {
+  return new Date(Math.max(left.getTime(), right.getTime()));
 }
 
 function startOfDay(date: Date): Date {
