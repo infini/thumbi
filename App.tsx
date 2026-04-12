@@ -20,6 +20,7 @@ import {
 import {
   Animated,
   Alert,
+  Easing,
   Modal,
   Pressable,
   ScrollView,
@@ -92,6 +93,7 @@ interface RecentRecordGroup {
 }
 
 interface StatsCardData {
+  icon: IconName;
   key: ScoreSeriesPeriod;
   title: string;
   period: string;
@@ -149,12 +151,14 @@ function AppContent() {
     useState<PendingUndoAction | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('home');
-  const [selectedStatsPeriod, setSelectedStatsPeriod] =
-    useState<ScoreSeriesPeriod>('week');
+  const [statsModalPeriod, setStatsModalPeriod] =
+    useState<ScoreSeriesPeriod | null>(null);
+  const [isStatsModalVisible, setIsStatsModalVisible] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [calendarCursor, setCalendarCursor] = useState(() => new Date());
   const pagerRef = useRef<PagerView | null>(null);
   const tabPosition = useRef(new Animated.Value(0)).current;
+  const statsModalProgress = useRef(new Animated.Value(0)).current;
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const skipNextPressRef = useRef(false);
   const holdBatchEntriesRef = useRef<VoteEntry[]>([]);
@@ -248,6 +252,7 @@ function AppContent() {
     : palette.text;
   const statsCards: StatsCardData[] = [
     {
+      icon: 'calendar-week',
       key: 'week',
       title: '주간',
       period: formatCompactWeekRange(now),
@@ -255,6 +260,7 @@ function AppContent() {
       accentColor: getTrendColor(weekSummary.score, palette),
     },
     {
+      icon: 'calendar-month',
       key: 'month',
       title: '월간',
       period: formatCompactMonthRange(now),
@@ -262,6 +268,7 @@ function AppContent() {
       accentColor: getTrendColor(monthSummary.score, palette),
     },
     {
+      icon: 'calendar-range',
       key: 'quarter',
       title: '분기',
       period: formatCompactQuarterRange(now),
@@ -269,6 +276,7 @@ function AppContent() {
       accentColor: getTrendColor(quarterSummary.score, palette),
     },
     {
+      icon: 'calendar',
       key: 'year',
       title: '연간',
       period: formatCompactYearRange(now),
@@ -276,9 +284,12 @@ function AppContent() {
       accentColor: getTrendColor(yearSummary.score, palette),
     },
   ];
-  const selectedStatCard =
-    statsCards.find((card) => card.key === selectedStatsPeriod) ?? statsCards[0];
-  const selectedScoreSeries = getScoreSeries(entries, selectedStatCard.key, now);
+  const selectedStatCard = statsModalPeriod
+    ? statsCards.find((card) => card.key === statsModalPeriod) ?? statsCards[0]
+    : null;
+  const selectedScoreSeries = selectedStatCard
+    ? getScoreSeries(entries, selectedStatCard.key, now)
+    : [];
   const scrollBottomPadding = TAB_BAR_HEIGHT + insets.bottom + 72;
 
   function getTabIndex(tab: TabKey): number {
@@ -293,6 +304,38 @@ function AppContent() {
     const nextIndex = getTabIndex(nextTab);
     setActiveTab(nextTab);
     pagerRef.current?.setPage(nextIndex);
+  }
+
+  function openStatsModal(period: ScoreSeriesPeriod) {
+    setStatsModalPeriod(period);
+    setIsStatsModalVisible(true);
+    statsModalProgress.stopAnimation();
+    statsModalProgress.setValue(0);
+    Animated.timing(statsModalProgress, {
+      toValue: 1,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }
+
+  function closeStatsModal() {
+    statsModalProgress.stopAnimation();
+    Animated.timing(statsModalProgress, {
+      toValue: 0,
+      duration: 180,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setIsStatsModalVisible(false);
+        setStatsModalPeriod(null);
+      }
+    });
+  }
+
+  function switchStatsModalPeriod(period: ScoreSeriesPeriod) {
+    setStatsModalPeriod(period);
   }
 
   function renderHomeTab() {
@@ -493,23 +536,15 @@ function AppContent() {
           {statsCards.map((card) => (
             <StatCard
               accentColor={card.accentColor}
-              active={selectedStatCard.key === card.key}
+              icon={card.icon}
               key={card.key}
-              onPress={() => setSelectedStatsPeriod(card.key)}
+              onPress={() => openStatsModal(card.key)}
               period={card.period}
               summary={card.summary}
               title={card.title}
             />
           ))}
         </View>
-
-        <ScoreChartCard
-          accentColor={selectedStatCard.accentColor}
-          period={selectedStatCard.period}
-          series={selectedScoreSeries}
-          summary={selectedStatCard.summary}
-          title={`${selectedStatCard.title} 점수 흐름`}
-        />
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>최고 기록</Text>
@@ -793,6 +828,15 @@ function AppContent() {
         summary={selectedDaySummary}
         trendColor={selectedDayTrendColor}
       />
+      <StatsDetailModal
+        cards={statsCards}
+        onClose={closeStatsModal}
+        onSelectPeriod={switchStatsModalPeriod}
+        progress={statsModalProgress}
+        selectedCard={selectedStatCard}
+        series={selectedScoreSeries}
+        visible={isStatsModalVisible}
+      />
       <InfoModal onClose={() => setIsInfoOpen(false)} visible={isInfoOpen} />
     </SafeAreaView>
   );
@@ -950,14 +994,14 @@ function CalendarNavButton({
 
 function StatCard({
   accentColor,
-  active,
+  icon,
   onPress,
   period,
   summary,
   title,
 }: {
   accentColor: string;
-  active: boolean;
+  icon: IconName;
   onPress: () => void;
   period: string;
   summary: VoteSummary;
@@ -971,10 +1015,9 @@ function StatCard({
       style={({ pressed }) => [
         styles.statCard,
         {
-          borderColor: active ? `${accentColor}52` : `${accentColor}20`,
+          borderColor: `${accentColor}20`,
           backgroundColor: getTrendSurface(summary.score, palette),
         },
-        active && styles.statCardActive,
         pressed && styles.statCardPressed,
       ]}
     >
@@ -999,19 +1042,28 @@ function StatCard({
       </View>
 
       <View style={styles.statCardFooter}>
-        <Text
+        <View style={styles.statCardAccentRow}>
+          <View
+            style={[styles.statCardAccentBar, { backgroundColor: `${accentColor}B8` }]}
+          />
+          <View
+            style={[styles.statCardAccentDot, { backgroundColor: `${accentColor}80` }]}
+          />
+          <View
+            style={[styles.statCardAccentDot, { backgroundColor: `${accentColor}55` }]}
+          />
+        </View>
+        <View
           style={[
-            styles.statCardHint,
-            { color: active ? accentColor : palette.textMuted },
+            styles.statCardAction,
+            {
+              backgroundColor: `${accentColor}14`,
+              borderColor: `${accentColor}24`,
+            },
           ]}
         >
-          {active ? '선택됨' : '눌러서 그래프 보기'}
-        </Text>
-        <MaterialCommunityIcons
-          color={active ? accentColor : palette.textSoft}
-          name={active ? 'chart-line' : 'chevron-right'}
-          size={16}
-        />
+          <MaterialCommunityIcons color={accentColor} name={icon} size={16} />
+        </View>
       </View>
     </Pressable>
   );
@@ -1245,6 +1297,202 @@ function ScoreChartCard({
         <Text style={styles.emptyText}>이 기간에는 아직 기록이 없어서 그래프가 비어 있어요.</Text>
       )}
     </View>
+  );
+}
+
+function StatsDetailModal({
+  cards,
+  onClose,
+  onSelectPeriod,
+  progress,
+  selectedCard,
+  series,
+  visible,
+}: {
+  cards: StatsCardData[];
+  onClose: () => void;
+  onSelectPeriod: (period: ScoreSeriesPeriod) => void;
+  progress: Animated.Value;
+  selectedCard: StatsCardData | null;
+  series: ScoreSeriesPoint[];
+  visible: boolean;
+}) {
+  const { isDark, palette, styles } = useAppTheme();
+
+  if (!selectedCard) {
+    return null;
+  }
+
+  const backdropOpacity = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+  const cardOpacity = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.4, 1],
+  });
+  const cardTranslateY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [34, 0],
+  });
+  const cardScale = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.94, 1],
+  });
+  const glowScale = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.88, 1],
+  });
+  const heroColors = getStatsHeroColors(selectedCard.summary.score, isDark);
+  const detailIconColor =
+    selectedCard.summary.total > 0 ? selectedCard.accentColor : palette.text;
+
+  return (
+    <Modal animationType="none" onRequestClose={onClose} transparent visible={visible}>
+      <View style={styles.statsModalOverlay}>
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.statsModalScrim, { opacity: backdropOpacity }]}
+        />
+        <Pressable onPress={onClose} style={styles.modalBackdrop} />
+
+        <Animated.View
+          style={[
+            styles.statsModalGlow,
+            {
+              opacity: backdropOpacity,
+              backgroundColor: `${selectedCard.accentColor}18`,
+              transform: [{ scale: glowScale }],
+            },
+          ]}
+        />
+
+        <Animated.View
+          style={[
+            styles.statsModalWindow,
+            {
+              opacity: cardOpacity,
+              transform: [{ translateY: cardTranslateY }, { scale: cardScale }],
+            },
+          ]}
+        >
+          <ScrollView
+            bounces={false}
+            contentContainerStyle={styles.statsModalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <LinearGradient
+              colors={heroColors}
+              end={{ x: 1, y: 1 }}
+              start={{ x: 0, y: 0 }}
+              style={styles.statsModalHero}
+            >
+              <View style={styles.statsModalHeroHeader}>
+                <View style={styles.statsModalHeroBadge}>
+                  <MaterialCommunityIcons
+                    color={detailIconColor}
+                    name={selectedCard.icon}
+                    size={16}
+                  />
+                  <Text style={styles.statsModalHeroBadgeText}>Score Flow</Text>
+                </View>
+                <Pressable onPress={onClose} style={styles.statsModalClose}>
+                  <MaterialCommunityIcons color={palette.textMuted} name="close" size={20} />
+                </Pressable>
+              </View>
+
+              <Text style={styles.statsModalTitle}>{selectedCard.title} 통계</Text>
+              <Text style={styles.statsModalPeriod}>{selectedCard.period}</Text>
+
+              <View style={styles.statsModalHeroMetrics}>
+                <View
+                  style={[
+                    styles.statsModalScorePlate,
+                    {
+                      backgroundColor: getTrendSoft(selectedCard.summary.score, palette),
+                      borderColor: `${detailIconColor}20`,
+                    },
+                  ]}
+                >
+                  <Text style={styles.statsModalScoreLabel}>점수</Text>
+                  <Text style={[styles.statsModalScoreValue, { color: detailIconColor }]}>
+                    {formatScore(selectedCard.summary.score)}
+                  </Text>
+                </View>
+
+                <View style={styles.statsModalHeroStats}>
+                  <MetricPill
+                    accentColor={palette.rise}
+                    backgroundColor={palette.riseSoft}
+                    icon="thumb-up-outline"
+                    label="엄지 척!!"
+                    value={selectedCard.summary.upCount}
+                  />
+                  <MetricPill
+                    accentColor={palette.fall}
+                    backgroundColor={palette.fallSoft}
+                    icon="thumb-down-outline"
+                    label="이건 좀.."
+                    value={selectedCard.summary.downCount}
+                  />
+                </View>
+              </View>
+            </LinearGradient>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.statsModalTabRow}
+            >
+              {cards.map((card) => {
+                const isActive = card.key === selectedCard.key;
+
+                return (
+                  <Pressable
+                    key={card.key}
+                    onPress={() => onSelectPeriod(card.key)}
+                    style={({ pressed }) => [
+                      styles.statsModalTab,
+                      {
+                        borderColor: isActive ? `${card.accentColor}42` : palette.border,
+                        backgroundColor: isActive
+                          ? `${card.accentColor}14`
+                          : isDark
+                            ? 'rgba(18,25,24,0.9)'
+                            : 'rgba(255,255,255,0.8)',
+                      },
+                      pressed && styles.statsModalTabPressed,
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      color={isActive ? card.accentColor : palette.textMuted}
+                      name={card.icon}
+                      size={15}
+                    />
+                    <Text
+                      style={[
+                        styles.statsModalTabText,
+                        { color: isActive ? card.accentColor : palette.textMuted },
+                      ]}
+                    >
+                      {card.title}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <ScoreChartCard
+              accentColor={selectedCard.accentColor}
+              period={selectedCard.period}
+              series={series}
+              summary={selectedCard.summary}
+              title={`${selectedCard.title} 점수 흐름`}
+            />
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
@@ -1798,6 +2046,27 @@ function getTrendSurface(score: number, palette: Palette): string {
   return palette.panel;
 }
 
+function getStatsHeroColors(
+  score: number,
+  isDark: boolean
+): readonly [string, string, string] {
+  if (score > 0) {
+    return isDark
+      ? ['#173531', '#101D1A', '#0E1413']
+      : ['#DFFBF5', '#F7FFFD', '#FFFFFF'];
+  }
+
+  if (score < 0) {
+    return isDark
+      ? ['#152537', '#101820', '#0E1318']
+      : ['#E8F3FE', '#F9FCFF', '#FFFFFF'];
+  }
+
+  return isDark
+    ? ['#1A2422', '#121817', '#101413']
+    : ['#EEF4F2', '#FAFDFC', '#FFFFFF'];
+}
+
 function getEntryAccent(kind: VoteKind, palette: Palette): string {
   return kind === 'up' ? palette.rise : palette.fall;
 }
@@ -2265,19 +2534,11 @@ function createStyles(palette: Palette) {
     paddingVertical: 13,
     borderWidth: 1,
     gap: 12,
-  },
-  statCardActive: {
-    shadowColor: '#5B6880',
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    elevation: 4,
+    overflow: 'hidden',
   },
   statCardPressed: {
-    opacity: 0.86,
+    opacity: 0.92,
+    transform: [{ scale: 0.98 }, { translateY: 2 }],
   },
   statCardTop: {
     flexDirection: 'row',
@@ -2320,10 +2581,28 @@ function createStyles(palette: Palette) {
     justifyContent: 'space-between',
     gap: 8,
   },
-  statCardHint: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    fontWeight: '700',
+  statCardAccentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statCardAccentBar: {
+    width: 26,
+    height: 4,
+    borderRadius: 999,
+  },
+  statCardAccentDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statCardAction: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statDetail: {
     paddingHorizontal: 10,
@@ -2337,7 +2616,6 @@ function createStyles(palette: Palette) {
     fontWeight: '700',
   },
   scoreChartCard: {
-    marginTop: 14,
     borderRadius: 28,
     padding: 18,
     borderWidth: 1,
@@ -2491,6 +2769,146 @@ function createStyles(palette: Palette) {
     fontWeight: '700',
   },
   scoreChartInsightValue: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statsModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+  },
+  statsModalScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(9, 14, 20, 0.44)',
+  },
+  statsModalGlow: {
+    position: 'absolute',
+    top: '18%',
+    alignSelf: 'center',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+  },
+  statsModalWindow: {
+    maxHeight: '92%',
+    borderRadius: 32,
+    overflow: 'hidden',
+    backgroundColor: isDark ? '#0F1615' : '#F7FBFA',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(223,248,244,0.08)' : 'rgba(12,18,16,0.08)',
+    shadowColor: '#3E4B60',
+    shadowOpacity: 0.22,
+    shadowRadius: 28,
+    shadowOffset: {
+      width: 0,
+      height: 18,
+    },
+    elevation: 18,
+  },
+  statsModalScrollContent: {
+    padding: 14,
+    gap: 14,
+  },
+  statsModalHero: {
+    borderRadius: 26,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 20,
+    gap: 12,
+  },
+  statsModalHeroHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  statsModalHeroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: isDark ? 'rgba(11,17,16,0.32)' : 'rgba(255,255,255,0.68)',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(223,248,244,0.08)' : 'rgba(12,18,16,0.06)',
+  },
+  statsModalHeroBadgeText: {
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  statsModalClose: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: isDark ? 'rgba(11,17,16,0.38)' : 'rgba(255,255,255,0.72)',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(223,248,244,0.08)' : 'rgba(12,18,16,0.06)',
+  },
+  statsModalTitle: {
+    color: palette.text,
+    fontFamily: fonts.display,
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  statsModalPeriod: {
+    marginTop: -2,
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  statsModalHeroMetrics: {
+    gap: 12,
+  },
+  statsModalScorePlate: {
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    gap: 4,
+    alignSelf: 'flex-start',
+    minWidth: 110,
+  },
+  statsModalScoreLabel: {
+    color: palette.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statsModalScoreValue: {
+    fontFamily: fonts.display,
+    fontSize: 34,
+    fontWeight: '800',
+  },
+  statsModalHeroStats: {
+    gap: 10,
+  },
+  statsModalTabRow: {
+    gap: 8,
+    paddingHorizontal: 2,
+  },
+  statsModalTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  statsModalTabPressed: {
+    opacity: 0.84,
+    transform: [{ scale: 0.98 }],
+  },
+  statsModalTabText: {
     fontFamily: fonts.body,
     fontSize: 12,
     fontWeight: '700',
