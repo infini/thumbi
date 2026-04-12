@@ -536,7 +536,6 @@ function AppContent() {
           {statsCards.map((card) => (
             <StatCard
               accentColor={card.accentColor}
-              icon={card.icon}
               key={card.key}
               onPress={() => openStatsModal(card.key)}
               period={card.period}
@@ -994,14 +993,12 @@ function CalendarNavButton({
 
 function StatCard({
   accentColor,
-  icon,
   onPress,
   period,
   summary,
   title,
 }: {
   accentColor: string;
-  icon: IconName;
   onPress: () => void;
   period: string;
   summary: VoteSummary;
@@ -1039,31 +1036,6 @@ function StatCard({
         <Text style={[styles.statDetail, { color: palette.fall }]}>
           {`이건 좀.. ${summary.downCount}`}
         </Text>
-      </View>
-
-      <View style={styles.statCardFooter}>
-        <View style={styles.statCardAccentRow}>
-          <View
-            style={[styles.statCardAccentBar, { backgroundColor: `${accentColor}B8` }]}
-          />
-          <View
-            style={[styles.statCardAccentDot, { backgroundColor: `${accentColor}80` }]}
-          />
-          <View
-            style={[styles.statCardAccentDot, { backgroundColor: `${accentColor}55` }]}
-          />
-        </View>
-        <View
-          style={[
-            styles.statCardAction,
-            {
-              backgroundColor: `${accentColor}14`,
-              borderColor: `${accentColor}24`,
-            },
-          ]}
-        >
-          <MaterialCommunityIcons color={accentColor} name={icon} size={16} />
-        </View>
       </View>
     </Pressable>
   );
@@ -1709,7 +1681,7 @@ function BottomTabBar({
         <TabBarButton
           accentColor={palette.sun}
           active={activeTab === 'stats'}
-          icon="chart-bell-curve-cumulative"
+          icon="chart-timeline-variant-shimmer"
           label="통계"
           onPress={() => onChange('stats')}
         />
@@ -1756,7 +1728,7 @@ function InfoModal({
               text="달력 탭에서 월별 이동과 날짜별 초기화가 가능해요."
             />
             <InfoRow
-              icon="chart-bell-curve-cumulative"
+              icon="chart-timeline-variant-shimmer"
               text="통계 탭에서 주간, 월간, 분기, 연간 흐름과 최고 기록을 봅니다."
             />
           </View>
@@ -2573,36 +2545,6 @@ function createStyles(palette: Palette) {
     flexDirection: 'row',
     gap: 8,
     flexWrap: 'wrap',
-  },
-  statCardFooter: {
-    marginTop: 'auto',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  statCardAccentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statCardAccentBar: {
-    width: 26,
-    height: 4,
-    borderRadius: 999,
-  },
-  statCardAccentDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statCardAction: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   statDetail: {
     paddingHorizontal: 10,
