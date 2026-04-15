@@ -173,6 +173,9 @@ function AppContent() {
   const stampFlashOpacity = useRef(new Animated.Value(0)).current;
   const stampFlashScale = useRef(new Animated.Value(0.8)).current;
   const stampTranslateY = useRef(new Animated.Value(16)).current;
+  const stampBodyOpacity = useRef(new Animated.Value(0)).current;
+  const stampBodyScale = useRef(new Animated.Value(1.08)).current;
+  const stampBodyTranslateY = useRef(new Animated.Value(-260)).current;
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const skipNextPressRef = useRef(false);
   const holdBatchEntriesRef = useRef<VoteEntry[]>([]);
@@ -249,6 +252,9 @@ function AppContent() {
       stampSplashScale.stopAnimation();
       stampFlashOpacity.stopAnimation();
       stampFlashScale.stopAnimation();
+      stampBodyOpacity.stopAnimation();
+      stampBodyScale.stopAnimation();
+      stampBodyTranslateY.stopAnimation();
       stampTranslateY.stopAnimation();
     };
   }, []);
@@ -380,15 +386,35 @@ function AppContent() {
     stampSplashScale.stopAnimation();
     stampFlashOpacity.stopAnimation();
     stampFlashScale.stopAnimation();
+    stampBodyOpacity.stopAnimation();
+    stampBodyScale.stopAnimation();
+    stampBodyTranslateY.stopAnimation();
     stampTranslateY.stopAnimation();
     stampOpacity.setValue(0);
-    stampScale.setValue(2.48);
-    stampSplashScale.setValue(0.42);
+    stampScale.setValue(0.72);
+    stampSplashScale.setValue(0.24);
     stampFlashOpacity.setValue(0);
     stampFlashScale.setValue(0.82);
-    stampTranslateY.setValue(44);
+    stampBodyOpacity.setValue(1);
+    stampBodyScale.setValue(1.08);
+    stampBodyTranslateY.setValue(-260);
+    stampTranslateY.setValue(0);
 
     Animated.sequence([
+      Animated.parallel([
+        Animated.timing(stampBodyTranslateY, {
+          toValue: 0,
+          duration: 220,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(stampBodyScale, {
+          toValue: 1,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
       Animated.parallel([
         Animated.timing(stampFlashOpacity, {
           toValue: 1,
@@ -396,51 +422,61 @@ function AppContent() {
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.timing(stampOpacity, {
-          toValue: 1,
-          duration: 95,
+        Animated.timing(stampFlashScale, {
+          toValue: 1.12,
+          duration: 240,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.spring(stampScale, {
-          toValue: 0.86,
-          speed: 26,
-          bounciness: 20,
+          toValue: 1,
+          speed: 22,
+          bounciness: 15,
+          useNativeDriver: true,
+        }),
+        Animated.timing(stampOpacity, {
+          toValue: 1,
+          duration: 40,
+          easing: Easing.out(Easing.linear),
           useNativeDriver: true,
         }),
         Animated.timing(stampSplashScale, {
-          toValue: 1.24,
+          toValue: 1.22,
           duration: 260,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.timing(stampFlashScale, {
-          toValue: 1.1,
-          duration: 220,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(stampTranslateY, {
-          toValue: 0,
-          duration: 240,
-          easing: Easing.out(Easing.back(1.36)),
-          useNativeDriver: true,
-        }),
+        Animated.sequence([
+          Animated.timing(stampBodyScale, {
+            toValue: 0.92,
+            duration: 70,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.spring(stampBodyScale, {
+            toValue: 1,
+            speed: 18,
+            bounciness: 11,
+            useNativeDriver: true,
+          }),
+        ]),
       ]),
-      Animated.spring(stampScale, {
-        toValue: 1,
-        speed: 20,
-        bounciness: 12,
-        useNativeDriver: true,
-      }),
-      Animated.delay(420),
       Animated.parallel([
-        Animated.timing(stampOpacity, {
-          toValue: 0,
-          duration: 240,
+        Animated.timing(stampBodyTranslateY, {
+          toValue: -130,
+          duration: 170,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
+        Animated.timing(stampBodyOpacity, {
+          toValue: 0,
+          duration: 170,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.delay(420),
+      Animated.parallel([
         Animated.timing(stampFlashOpacity, {
           toValue: 0,
           duration: 260,
@@ -448,8 +484,8 @@ function AppContent() {
           useNativeDriver: true,
         }),
         Animated.timing(stampScale, {
-          toValue: 1.08,
-          duration: 240,
+          toValue: 1.06,
+          duration: 260,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -463,6 +499,12 @@ function AppContent() {
           toValue: 1.28,
           duration: 260,
           easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(stampOpacity, {
+          toValue: 0,
+          duration: 240,
+          easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
       ]),
@@ -951,6 +993,9 @@ function AppContent() {
         tabPosition={tabPosition}
       />
       <StampBurst
+        bodyOpacity={stampBodyOpacity}
+        bodyScale={stampBodyScale}
+        bodyTranslateY={stampBodyTranslateY}
         flashOpacity={stampFlashOpacity}
         flashScale={stampFlashScale}
         opacity={stampOpacity}
@@ -1066,6 +1111,9 @@ function ActionButton({
 }
 
 function StampBurst({
+  bodyOpacity,
+  bodyScale,
+  bodyTranslateY,
   flashOpacity,
   flashScale,
   opacity,
@@ -1074,6 +1122,9 @@ function StampBurst({
   stamp,
   translateY,
 }: {
+  bodyOpacity: Animated.Value;
+  bodyScale: Animated.Value;
+  bodyTranslateY: Animated.Value;
   flashOpacity: Animated.Value;
   flashScale: Animated.Value;
   opacity: Animated.Value;
@@ -1103,7 +1154,9 @@ function StampBurst({
     inputRange: [0, 1],
     outputRange: [0, 0.36],
   });
-  const rotation = stamp.kind === 'up' ? '-13deg' : '10deg';
+  const imprintRotation = stamp.kind === 'up' ? '-13deg' : '10deg';
+  const bodyRotation = stamp.kind === 'up' ? '-7deg' : '6deg';
+  const bodyShadow = isDark ? `${accentColor}66` : `${accentColor}48`;
 
   return (
     <Animated.View
@@ -1135,6 +1188,40 @@ function StampBurst({
 
       <Animated.View
         style={[
+          styles.stampBody,
+          {
+            opacity: bodyOpacity,
+            shadowColor: bodyShadow,
+            transform: [
+              { translateY: bodyTranslateY },
+              { scale: bodyScale },
+              { rotate: bodyRotation },
+            ],
+          },
+        ]}
+      >
+        <View style={[styles.stampHandleTop, { backgroundColor: accentColor }]} />
+        <View style={[styles.stampHandleStem, { backgroundColor: `${accentColor}D8` }]} />
+        <LinearGradient
+          colors={
+            stamp.kind === 'up'
+              ? (['#F5C9CD', '#E98B94', '#C85864'] as const)
+              : (['#CEE1F7', '#86B2E6', '#4D7FC3'] as const)
+          }
+          end={{ x: 1, y: 1 }}
+          start={{ x: 0, y: 0 }}
+          style={styles.stampBodyBase}
+        >
+          <View style={styles.stampBodyInset}>
+            <Text style={styles.stampBodyLabel}>
+              {stamp.kind === 'up' ? 'AWE' : 'KEEP'}
+            </Text>
+          </View>
+        </LinearGradient>
+      </Animated.View>
+
+      <Animated.View
+        style={[
           styles.stampSplash,
           {
             backgroundColor: inkWash,
@@ -1153,7 +1240,7 @@ function StampBurst({
             borderColor: accentColor,
             shadowColor: accentColor,
             opacity,
-            transform: [{ translateY }, { scale }, { rotate: rotation }],
+            transform: [{ translateY }, { scale }, { rotate: imprintRotation }],
           },
         ]}
       >
@@ -2626,6 +2713,61 @@ function createStyles(palette: Palette) {
     height: 340,
     borderRadius: 170,
     borderWidth: 10,
+    zIndex: 1,
+  },
+  stampBody: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    width: 196,
+    height: 228,
+    zIndex: 3,
+    shadowOpacity: 0.26,
+    shadowRadius: 18,
+    shadowOffset: {
+      width: 0,
+      height: 16,
+    },
+  },
+  stampHandleTop: {
+    width: 74,
+    height: 58,
+    borderRadius: 29,
+    marginBottom: -4,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  stampHandleStem: {
+    width: 26,
+    height: 44,
+    borderRadius: 13,
+    marginBottom: -4,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.16)',
+  },
+  stampBodyBase: {
+    width: 168,
+    height: 116,
+    borderRadius: 34,
+    padding: 8,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.26)',
+  },
+  stampBodyInset: {
+    flex: 1,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(10,12,16,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+  },
+  stampBodyLabel: {
+    color: 'rgba(255,255,255,0.88)',
+    fontFamily: fonts.display,
+    fontSize: 30,
+    fontWeight: '800',
+    letterSpacing: 1.2,
   },
   stampSplash: {
     position: 'absolute',
@@ -2633,6 +2775,7 @@ function createStyles(palette: Palette) {
     height: 270,
     borderRadius: 135,
     borderWidth: 3,
+    zIndex: 2,
   },
   stampSeal: {
     width: 208,
@@ -2647,6 +2790,7 @@ function createStyles(palette: Palette) {
       width: 0,
       height: 12,
     },
+    zIndex: 2,
   },
   stampSealInner: {
     position: 'absolute',
