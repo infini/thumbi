@@ -101,6 +101,13 @@ interface StatsCardData {
   accentColor: string;
 }
 
+interface StampFeedback {
+  kind: VoteKind;
+  title: string;
+  subtitle: string;
+  icon: IconName;
+}
+
 type AppStyles = ReturnType<typeof createStyles>;
 
 interface ThemeContextValue {
@@ -151,6 +158,7 @@ function AppContent() {
     useState<PendingUndoAction | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('home');
+  const [activeStamp, setActiveStamp] = useState<StampFeedback | null>(null);
   const [statsModalPeriod, setStatsModalPeriod] =
     useState<ScoreSeriesPeriod | null>(null);
   const [isStatsModalVisible, setIsStatsModalVisible] = useState(false);
@@ -159,6 +167,10 @@ function AppContent() {
   const pagerRef = useRef<PagerView | null>(null);
   const tabPosition = useRef(new Animated.Value(0)).current;
   const statsModalProgress = useRef(new Animated.Value(0)).current;
+  const stampOpacity = useRef(new Animated.Value(0)).current;
+  const stampScale = useRef(new Animated.Value(0.74)).current;
+  const stampSplashScale = useRef(new Animated.Value(0.68)).current;
+  const stampTranslateY = useRef(new Animated.Value(16)).current;
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const skipNextPressRef = useRef(false);
   const holdBatchEntriesRef = useRef<VoteEntry[]>([]);
@@ -230,6 +242,10 @@ function AppContent() {
   useEffect(() => {
     return () => {
       stopRepeatInput();
+      stampOpacity.stopAnimation();
+      stampScale.stopAnimation();
+      stampSplashScale.stopAnimation();
+      stampTranslateY.stopAnimation();
     };
   }, []);
 
@@ -338,6 +354,93 @@ function AppContent() {
     setStatsModalPeriod(period);
   }
 
+  function triggerStamp(kind: VoteKind) {
+    const nextStamp: StampFeedback =
+      kind === 'up'
+        ? {
+            kind,
+            title: '참 잘했어요!',
+            subtitle: 'AWE PRAISE SEAL',
+            icon: 'star-four-points',
+          }
+        : {
+            kind,
+            title: '분발하세요!',
+            subtitle: 'AWE TRY AGAIN SEAL',
+            icon: 'alert-circle-outline',
+          };
+
+    setActiveStamp(nextStamp);
+    stampOpacity.stopAnimation();
+    stampScale.stopAnimation();
+    stampSplashScale.stopAnimation();
+    stampTranslateY.stopAnimation();
+    stampOpacity.setValue(0);
+    stampScale.setValue(1.68);
+    stampSplashScale.setValue(0.72);
+    stampTranslateY.setValue(18);
+
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(stampOpacity, {
+          toValue: 1,
+          duration: 80,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(stampScale, {
+          toValue: 0.92,
+          speed: 22,
+          bounciness: 16,
+          useNativeDriver: true,
+        }),
+        Animated.spring(stampSplashScale, {
+          toValue: 1.08,
+          speed: 16,
+          bounciness: 10,
+          useNativeDriver: true,
+        }),
+        Animated.timing(stampTranslateY, {
+          toValue: 0,
+          duration: 220,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.spring(stampScale, {
+        toValue: 1,
+        speed: 18,
+        bounciness: 10,
+        useNativeDriver: true,
+      }),
+      Animated.delay(460),
+      Animated.parallel([
+        Animated.timing(stampOpacity, {
+          toValue: 0,
+          duration: 220,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(stampScale, {
+          toValue: 1.05,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(stampSplashScale, {
+          toValue: 1.16,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(({ finished }) => {
+      if (finished) {
+        setActiveStamp(null);
+      }
+    });
+  }
+
   function renderHomeTab() {
     const heroColors = isDark
       ? (['#14201E', '#101715', '#0E1413'] as const)
@@ -431,6 +534,14 @@ function AppContent() {
               labelColor="#1F4F89"
             />
           </View>
+
+          <StampBurst
+            opacity={stampOpacity}
+            scale={stampScale}
+            splashScale={stampSplashScale}
+            stamp={activeStamp}
+            translateY={stampTranslateY}
+          />
         </LinearGradient>
 
         <View style={styles.recentCard}>
@@ -577,6 +688,7 @@ function AppContent() {
     }
 
     const note = draftNote.trim();
+    triggerStamp(kind);
     const nextEntry = createVoteEntry(kind, note);
     setEntries((currentEntries) => sortEntries([nextEntry, ...currentEntries]));
     setPendingUndoAction({
@@ -626,6 +738,7 @@ function AppContent() {
     skipNextPressRef.current = true;
     holdBatchEntriesRef.current = [];
     holdNoteRef.current = draftNote.trim();
+    triggerStamp(kind);
     addBatchEntries(kind, REPEAT_STEP, holdNoteRef.current);
     setDraftNote('');
     repeatIntervalRef.current = setInterval(() => {
@@ -915,6 +1028,91 @@ function ActionButton({
         <Text style={[styles.actionButtonLabel, { color: labelColor }]}>{label}</Text>
       </LinearGradient>
     </Pressable>
+  );
+}
+
+function StampBurst({
+  opacity,
+  scale,
+  splashScale,
+  stamp,
+  translateY,
+}: {
+  opacity: Animated.Value;
+  scale: Animated.Value;
+  splashScale: Animated.Value;
+  stamp: StampFeedback | null;
+  translateY: Animated.Value;
+}) {
+  const { isDark, styles } = useAppTheme();
+
+  if (!stamp) {
+    return null;
+  }
+
+  const accentColor = stamp.kind === 'up' ? '#E26F79' : '#5F8FD1';
+  const inkWash = isDark ? `${accentColor}1C` : `${accentColor}12`;
+  const outerInk = isDark ? `${accentColor}80` : `${accentColor}68`;
+  const splashOpacity = opacity.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.72],
+  });
+  const rotation = stamp.kind === 'up' ? '-13deg' : '10deg';
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.stampBurst,
+        stamp.kind === 'up' ? styles.stampBurstUp : styles.stampBurstDown,
+        {
+          opacity,
+          transform: [{ translateY }, { scale }],
+        },
+      ]}
+    >
+      <Animated.View
+        style={[
+          styles.stampSplash,
+          {
+            backgroundColor: inkWash,
+            borderColor: outerInk,
+            opacity: splashOpacity,
+            transform: [{ scale: splashScale }],
+          },
+        ]}
+      />
+
+      <View
+        style={[
+          styles.stampSeal,
+          {
+            backgroundColor: inkWash,
+            borderColor: accentColor,
+            shadowColor: accentColor,
+            transform: [{ rotate: rotation }],
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.stampSealInner,
+            {
+              borderColor: outerInk,
+            },
+          ]}
+        />
+
+        <View style={styles.stampSealContent}>
+          <MaterialCommunityIcons color={accentColor} name={stamp.icon} size={18} />
+          <Text style={[styles.stampSealTitle, { color: accentColor }]}>{stamp.title}</Text>
+          <View style={[styles.stampSealDivider, { backgroundColor: `${accentColor}34` }]} />
+          <Text style={[styles.stampSealSubtitle, { color: accentColor }]}>
+            {stamp.subtitle}
+          </Text>
+        </View>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -2199,6 +2397,7 @@ function createStyles(palette: Palette) {
     opacity: 0.7,
   },
   heroCard: {
+    position: 'relative',
     borderRadius: 32,
     padding: 22,
     gap: 18,
@@ -2348,6 +2547,74 @@ function createStyles(palette: Palette) {
     fontFamily: fonts.display,
     fontSize: 20,
     fontWeight: '700',
+  },
+  stampBurst: {
+    position: 'absolute',
+    width: 148,
+    height: 148,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 4,
+  },
+  stampBurstUp: {
+    left: 2,
+    bottom: 8,
+  },
+  stampBurstDown: {
+    right: 2,
+    bottom: 8,
+  },
+  stampSplash: {
+    position: 'absolute',
+    width: 144,
+    height: 144,
+    borderRadius: 72,
+    borderWidth: 3,
+  },
+  stampSeal: {
+    width: 126,
+    height: 126,
+    borderRadius: 63,
+    borderWidth: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+  },
+  stampSealInner: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2,
+  },
+  stampSealContent: {
+    width: 88,
+    alignItems: 'center',
+    gap: 6,
+  },
+  stampSealTitle: {
+    fontFamily: fonts.display,
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  stampSealDivider: {
+    width: 52,
+    height: 2,
+    borderRadius: 999,
+  },
+  stampSealSubtitle: {
+    fontFamily: fonts.body,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textAlign: 'center',
   },
   sectionHeader: {
     flexDirection: 'row',
