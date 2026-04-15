@@ -27,6 +27,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  Image,
   View,
   useColorScheme,
 } from 'react-native';
@@ -74,6 +75,7 @@ const REPEAT_INTERVAL_MS = 1000;
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 const TAB_BAR_HEIGHT = 76;
 const TAB_ORDER: TabKey[] = ['home', 'calendar', 'stats'];
+const STAMP_BODY_IMAGE = require('./assets/stamp-photo-body.png');
 
 interface PendingUndoAction {
   entries: VoteEntry[];
@@ -1193,11 +1195,6 @@ function StampBurst({
     inputRange: [0, 1],
     outputRange: [0, 18],
   });
-  const woodColors =
-    stamp.kind === 'up'
-      ? (['#9E6840', '#7A4D2C', '#5A341B'] as const)
-      : (['#A77449', '#825432', '#60381F'] as const);
-
   return (
     <Animated.View
       pointerEvents="none"
@@ -1263,31 +1260,11 @@ function StampBurst({
             </Text>
           </View>
         </Animated.View>
-
-        <LinearGradient
-          colors={woodColors}
-          end={{ x: 1, y: 1 }}
-          start={{ x: 0, y: 0 }}
-          style={styles.stampHandleTop}
+        <Image
+          resizeMode="contain"
+          source={STAMP_BODY_IMAGE}
+          style={styles.stampBodyImage}
         />
-        <LinearGradient
-          colors={(['#8B5B36', '#6B4327', '#4D2F1A'] as const)}
-          end={{ x: 1, y: 1 }}
-          start={{ x: 0, y: 0 }}
-          style={styles.stampHandleStem}
-        />
-        <LinearGradient
-          colors={woodColors}
-          end={{ x: 1, y: 1 }}
-          start={{ x: 0, y: 0 }}
-          style={styles.stampBodyBase}
-        >
-          <View style={styles.stampBodyInset}>
-            <Text style={styles.stampBodyLabel}>
-              {stamp.kind === 'up' ? 'WOOD' : 'STAMP'}
-            </Text>
-          </View>
-        </LinearGradient>
       </Animated.View>
 
       <Animated.View
@@ -2792,9 +2769,9 @@ function createStyles(palette: Palette) {
   stampBody: {
     position: 'absolute',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    width: 196,
-    height: 228,
+    justifyContent: 'center',
+    width: 214,
+    height: 360,
     zIndex: 3,
     shadowOpacity: 0.26,
     shadowRadius: 18,
@@ -2803,9 +2780,13 @@ function createStyles(palette: Palette) {
       height: 16,
     },
   },
+  stampBodyImage: {
+    width: '100%',
+    height: '100%',
+  },
   stampUnderside: {
     position: 'absolute',
-    bottom: 6,
+    bottom: 18,
     alignItems: 'center',
     justifyContent: 'center',
     width: 178,
@@ -2836,46 +2817,6 @@ function createStyles(palette: Palette) {
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.2,
-  },
-  stampHandleTop: {
-    width: 74,
-    height: 58,
-    borderRadius: 29,
-    marginBottom: -4,
-    borderWidth: 4,
-    borderColor: 'rgba(255,240,220,0.18)',
-  },
-  stampHandleStem: {
-    width: 26,
-    height: 44,
-    borderRadius: 13,
-    marginBottom: -4,
-    borderWidth: 4,
-    borderColor: 'rgba(255,240,220,0.14)',
-  },
-  stampBodyBase: {
-    width: 168,
-    height: 116,
-    borderRadius: 34,
-    padding: 8,
-    borderWidth: 4,
-    borderColor: 'rgba(255,240,220,0.18)',
-  },
-  stampBodyInset: {
-    flex: 1,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(42,24,12,0.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,240,220,0.14)',
-  },
-  stampBodyLabel: {
-    color: 'rgba(255,244,230,0.9)',
-    fontFamily: fonts.display,
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: 1.4,
   },
   stampSplash: {
     position: 'absolute',
