@@ -176,6 +176,7 @@ function AppContent() {
   const stampBodyOpacity = useRef(new Animated.Value(0)).current;
   const stampBodyScale = useRef(new Animated.Value(1.08)).current;
   const stampBodyTranslateY = useRef(new Animated.Value(-260)).current;
+  const stampBodyTilt = useRef(new Animated.Value(0)).current;
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const skipNextPressRef = useRef(false);
   const holdBatchEntriesRef = useRef<VoteEntry[]>([]);
@@ -255,6 +256,7 @@ function AppContent() {
       stampBodyOpacity.stopAnimation();
       stampBodyScale.stopAnimation();
       stampBodyTranslateY.stopAnimation();
+      stampBodyTilt.stopAnimation();
       stampTranslateY.stopAnimation();
     };
   }, []);
@@ -389,28 +391,30 @@ function AppContent() {
     stampBodyOpacity.stopAnimation();
     stampBodyScale.stopAnimation();
     stampBodyTranslateY.stopAnimation();
+    stampBodyTilt.stopAnimation();
     stampTranslateY.stopAnimation();
     stampOpacity.setValue(0);
-    stampScale.setValue(0.52);
-    stampSplashScale.setValue(0.18);
+    stampScale.setValue(0.38);
+    stampSplashScale.setValue(0.12);
     stampFlashOpacity.setValue(0);
     stampFlashScale.setValue(0.82);
     stampBodyOpacity.setValue(1);
     stampBodyScale.setValue(1.14);
-    stampBodyTranslateY.setValue(-300);
+    stampBodyTranslateY.setValue(-340);
+    stampBodyTilt.setValue(0);
     stampTranslateY.setValue(22);
 
     Animated.sequence([
       Animated.parallel([
         Animated.timing(stampBodyTranslateY, {
           toValue: 0,
-          duration: 200,
+          duration: 210,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(stampBodyScale, {
           toValue: 1,
-          duration: 200,
+          duration: 210,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -435,23 +439,23 @@ function AppContent() {
           useNativeDriver: true,
         }),
         Animated.sequence([
-          Animated.delay(48),
+          Animated.delay(34),
           Animated.parallel([
             Animated.timing(stampOpacity, {
               toValue: 1,
-              duration: 70,
+              duration: 58,
               easing: Easing.out(Easing.linear),
               useNativeDriver: true,
             }),
             Animated.spring(stampScale, {
               toValue: 1,
-              speed: 20,
-              bounciness: 10,
+              speed: 24,
+              bounciness: 8,
               useNativeDriver: true,
             }),
             Animated.timing(stampTranslateY, {
               toValue: 0,
-              duration: 90,
+              duration: 72,
               easing: Easing.out(Easing.cubic),
               useNativeDriver: true,
             }),
@@ -473,15 +477,21 @@ function AppContent() {
         ]),
       ]),
       Animated.parallel([
+        Animated.timing(stampBodyTilt, {
+          toValue: 1,
+          duration: 120,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
         Animated.timing(stampBodyTranslateY, {
-          toValue: -210,
-          duration: 160,
+          toValue: -176,
+          duration: 150,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(stampBodyOpacity, {
           toValue: 0,
-          duration: 140,
+          duration: 130,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -1007,6 +1017,7 @@ function AppContent() {
         bodyOpacity={stampBodyOpacity}
         bodyScale={stampBodyScale}
         bodyTranslateY={stampBodyTranslateY}
+        bodyTilt={stampBodyTilt}
         flashOpacity={stampFlashOpacity}
         flashScale={stampFlashScale}
         opacity={stampOpacity}
@@ -1125,6 +1136,7 @@ function StampBurst({
   bodyOpacity,
   bodyScale,
   bodyTranslateY,
+  bodyTilt,
   flashOpacity,
   flashScale,
   opacity,
@@ -1136,6 +1148,7 @@ function StampBurst({
   bodyOpacity: Animated.Value;
   bodyScale: Animated.Value;
   bodyTranslateY: Animated.Value;
+  bodyTilt: Animated.Value;
   flashOpacity: Animated.Value;
   flashScale: Animated.Value;
   opacity: Animated.Value;
@@ -1168,17 +1181,17 @@ function StampBurst({
   const imprintRotation = stamp.kind === 'up' ? '-13deg' : '10deg';
   const bodyRotation = stamp.kind === 'up' ? '-7deg' : '6deg';
   const bodyShadow = 'rgba(62, 34, 18, 0.42)';
-  const undersideReveal = bodyTranslateY.interpolate({
-    inputRange: [-210, -80, 0],
-    outputRange: [1, 0.5, 0],
+  const undersideReveal = bodyTilt.interpolate({
+    inputRange: [0, 0.34, 1],
+    outputRange: [0, 0.42, 1],
   });
-  const undersideTilt = bodyTranslateY.interpolate({
-    inputRange: [-210, 0],
-    outputRange: ['7deg', '0deg'],
+  const bodyRotateX = bodyTilt.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '58deg'],
   });
-  const undersideTranslateY = bodyTranslateY.interpolate({
-    inputRange: [-210, 0],
-    outputRange: [22, 0],
+  const undersideTranslateY = bodyTilt.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 18],
   });
   const woodColors =
     stamp.kind === 'up'
@@ -1223,6 +1236,8 @@ function StampBurst({
               { translateY: bodyTranslateY },
               { scale: bodyScale },
               { rotate: bodyRotation },
+              { perspective: 1000 },
+              { rotateX: bodyRotateX },
             ],
           },
         ]}
@@ -1235,13 +1250,14 @@ function StampBurst({
               transform: [
                 { translateY: undersideTranslateY },
                 { perspective: 900 },
-                { rotateX: undersideTilt },
+                { rotateX: '72deg' },
               ],
             },
           ]}
         >
           <View style={styles.stampUndersideWood} />
           <View style={[styles.stampUndersideRubber, { borderColor: `${accentColor}7C` }]}>
+            <MaterialCommunityIcons color={accentColor} name={stamp.icon} size={15} />
             <Text style={[styles.stampUndersideText, { color: accentColor }]}>
               {stamp.title}
             </Text>
@@ -2789,11 +2805,11 @@ function createStyles(palette: Palette) {
   },
   stampUnderside: {
     position: 'absolute',
-    bottom: 8,
+    bottom: 6,
     alignItems: 'center',
     justifyContent: 'center',
     width: 178,
-    height: 58,
+    height: 64,
     zIndex: 1,
   },
   stampUndersideWood: {
@@ -2807,18 +2823,19 @@ function createStyles(palette: Palette) {
   },
   stampUndersideRubber: {
     width: 146,
-    height: 30,
-    borderRadius: 15,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: 'rgba(34,18,16,0.88)',
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 3,
   },
   stampUndersideText: {
     fontFamily: fonts.display,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 0.4,
+    letterSpacing: 0.2,
   },
   stampHandleTop: {
     width: 74,
