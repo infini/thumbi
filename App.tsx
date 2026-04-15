@@ -1150,7 +1150,7 @@ function StampBurst({
     return null;
   }
 
-  const accentColor = stamp.kind === 'up' ? '#E26F79' : '#5F8FD1';
+  const accentColor = stamp.kind === 'up' ? '#D95E6A' : '#557FBE';
   const inkWash = isDark ? `${accentColor}1C` : `${accentColor}12`;
   const outerInk = isDark ? `${accentColor}80` : `${accentColor}68`;
   const splashOpacity = opacity.interpolate({
@@ -1167,7 +1167,23 @@ function StampBurst({
   });
   const imprintRotation = stamp.kind === 'up' ? '-13deg' : '10deg';
   const bodyRotation = stamp.kind === 'up' ? '-7deg' : '6deg';
-  const bodyShadow = isDark ? `${accentColor}66` : `${accentColor}48`;
+  const bodyShadow = 'rgba(62, 34, 18, 0.42)';
+  const undersideReveal = bodyTranslateY.interpolate({
+    inputRange: [-210, -80, 0],
+    outputRange: [1, 0.5, 0],
+  });
+  const undersideTilt = bodyTranslateY.interpolate({
+    inputRange: [-210, 0],
+    outputRange: ['7deg', '0deg'],
+  });
+  const undersideTranslateY = bodyTranslateY.interpolate({
+    inputRange: [-210, 0],
+    outputRange: [22, 0],
+  });
+  const woodColors =
+    stamp.kind === 'up'
+      ? (['#9E6840', '#7A4D2C', '#5A341B'] as const)
+      : (['#A77449', '#825432', '#60381F'] as const);
 
   return (
     <Animated.View
@@ -1211,21 +1227,48 @@ function StampBurst({
           },
         ]}
       >
-        <View style={[styles.stampHandleTop, { backgroundColor: accentColor }]} />
-        <View style={[styles.stampHandleStem, { backgroundColor: `${accentColor}D8` }]} />
+        <Animated.View
+          style={[
+            styles.stampUnderside,
+            {
+              opacity: undersideReveal,
+              transform: [
+                { translateY: undersideTranslateY },
+                { perspective: 900 },
+                { rotateX: undersideTilt },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.stampUndersideWood} />
+          <View style={[styles.stampUndersideRubber, { borderColor: `${accentColor}7C` }]}>
+            <Text style={[styles.stampUndersideText, { color: accentColor }]}>
+              {stamp.title}
+            </Text>
+          </View>
+        </Animated.View>
+
         <LinearGradient
-          colors={
-            stamp.kind === 'up'
-              ? (['#F5C9CD', '#E98B94', '#C85864'] as const)
-              : (['#CEE1F7', '#86B2E6', '#4D7FC3'] as const)
-          }
+          colors={woodColors}
+          end={{ x: 1, y: 1 }}
+          start={{ x: 0, y: 0 }}
+          style={styles.stampHandleTop}
+        />
+        <LinearGradient
+          colors={(['#8B5B36', '#6B4327', '#4D2F1A'] as const)}
+          end={{ x: 1, y: 1 }}
+          start={{ x: 0, y: 0 }}
+          style={styles.stampHandleStem}
+        />
+        <LinearGradient
+          colors={woodColors}
           end={{ x: 1, y: 1 }}
           start={{ x: 0, y: 0 }}
           style={styles.stampBodyBase}
         >
           <View style={styles.stampBodyInset}>
             <Text style={styles.stampBodyLabel}>
-              {stamp.kind === 'up' ? 'AWE' : 'KEEP'}
+              {stamp.kind === 'up' ? 'WOOD' : 'STAMP'}
             </Text>
           </View>
         </LinearGradient>
@@ -2744,13 +2787,46 @@ function createStyles(palette: Palette) {
       height: 16,
     },
   },
+  stampUnderside: {
+    position: 'absolute',
+    bottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 178,
+    height: 58,
+    zIndex: 1,
+  },
+  stampUndersideWood: {
+    position: 'absolute',
+    width: 176,
+    height: 42,
+    borderRadius: 22,
+    backgroundColor: '#6D4327',
+    borderWidth: 3,
+    borderColor: 'rgba(44,25,14,0.46)',
+  },
+  stampUndersideRubber: {
+    width: 146,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(34,18,16,0.88)',
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stampUndersideText: {
+    fontFamily: fonts.display,
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
   stampHandleTop: {
     width: 74,
     height: 58,
     borderRadius: 29,
     marginBottom: -4,
     borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: 'rgba(255,240,220,0.18)',
   },
   stampHandleStem: {
     width: 26,
@@ -2758,7 +2834,7 @@ function createStyles(palette: Palette) {
     borderRadius: 13,
     marginBottom: -4,
     borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(255,240,220,0.14)',
   },
   stampBodyBase: {
     width: 168,
@@ -2766,23 +2842,23 @@ function createStyles(palette: Palette) {
     borderRadius: 34,
     padding: 8,
     borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.26)',
+    borderColor: 'rgba(255,240,220,0.18)',
   },
   stampBodyInset: {
     flex: 1,
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(10,12,16,0.16)',
+    backgroundColor: 'rgba(42,24,12,0.14)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.24)',
+    borderColor: 'rgba(255,240,220,0.14)',
   },
   stampBodyLabel: {
-    color: 'rgba(255,255,255,0.88)',
+    color: 'rgba(255,244,230,0.9)',
     fontFamily: fonts.display,
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800',
-    letterSpacing: 1.2,
+    letterSpacing: 1.4,
   },
   stampSplash: {
     position: 'absolute',
