@@ -391,26 +391,26 @@ function AppContent() {
     stampBodyTranslateY.stopAnimation();
     stampTranslateY.stopAnimation();
     stampOpacity.setValue(0);
-    stampScale.setValue(0.72);
-    stampSplashScale.setValue(0.24);
+    stampScale.setValue(0.52);
+    stampSplashScale.setValue(0.18);
     stampFlashOpacity.setValue(0);
     stampFlashScale.setValue(0.82);
     stampBodyOpacity.setValue(1);
-    stampBodyScale.setValue(1.08);
-    stampBodyTranslateY.setValue(-260);
-    stampTranslateY.setValue(0);
+    stampBodyScale.setValue(1.14);
+    stampBodyTranslateY.setValue(-300);
+    stampTranslateY.setValue(22);
 
     Animated.sequence([
       Animated.parallel([
         Animated.timing(stampBodyTranslateY, {
           toValue: 0,
-          duration: 220,
+          duration: 200,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(stampBodyScale, {
           toValue: 1,
-          duration: 220,
+          duration: 200,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -424,32 +424,43 @@ function AppContent() {
         }),
         Animated.timing(stampFlashScale, {
           toValue: 1.12,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(stampSplashScale, {
+          toValue: 1.28,
           duration: 240,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.spring(stampScale, {
-          toValue: 1,
-          speed: 22,
-          bounciness: 15,
-          useNativeDriver: true,
-        }),
-        Animated.timing(stampOpacity, {
-          toValue: 1,
-          duration: 40,
-          easing: Easing.out(Easing.linear),
-          useNativeDriver: true,
-        }),
-        Animated.timing(stampSplashScale, {
-          toValue: 1.22,
-          duration: 260,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
+        Animated.sequence([
+          Animated.delay(48),
+          Animated.parallel([
+            Animated.timing(stampOpacity, {
+              toValue: 1,
+              duration: 70,
+              easing: Easing.out(Easing.linear),
+              useNativeDriver: true,
+            }),
+            Animated.spring(stampScale, {
+              toValue: 1,
+              speed: 20,
+              bounciness: 10,
+              useNativeDriver: true,
+            }),
+            Animated.timing(stampTranslateY, {
+              toValue: 0,
+              duration: 90,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
         Animated.sequence([
           Animated.timing(stampBodyScale, {
             toValue: 0.92,
-            duration: 70,
+            duration: 60,
             easing: Easing.out(Easing.quad),
             useNativeDriver: true,
           }),
@@ -463,19 +474,19 @@ function AppContent() {
       ]),
       Animated.parallel([
         Animated.timing(stampBodyTranslateY, {
-          toValue: -130,
-          duration: 170,
+          toValue: -210,
+          duration: 160,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(stampBodyOpacity, {
           toValue: 0,
-          duration: 170,
+          duration: 140,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
       ]),
-      Animated.delay(420),
+      Animated.delay(560),
       Animated.parallel([
         Animated.timing(stampFlashOpacity, {
           toValue: 0,
@@ -484,13 +495,13 @@ function AppContent() {
           useNativeDriver: true,
         }),
         Animated.timing(stampScale, {
-          toValue: 1.06,
+          toValue: 1.03,
           duration: 260,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(stampSplashScale, {
-          toValue: 1.9,
+          toValue: 1.74,
           duration: 260,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
@@ -503,7 +514,7 @@ function AppContent() {
         }),
         Animated.timing(stampOpacity, {
           toValue: 0,
-          duration: 240,
+          duration: 260,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -1238,9 +1249,13 @@ function StampBurst({
           {
             backgroundColor: inkWash,
             borderColor: accentColor,
-            shadowColor: accentColor,
             opacity,
-            transform: [{ translateY }, { scale }, { rotate: imprintRotation }],
+            transform: [
+              { translateY },
+              { scale },
+              { scaleY: 0.94 },
+              { rotate: imprintRotation },
+            ],
           },
         ]}
       >
@@ -2784,12 +2799,6 @@ function createStyles(palette: Palette) {
     borderWidth: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOpacity: 0.22,
-    shadowRadius: 22,
-    shadowOffset: {
-      width: 0,
-      height: 12,
-    },
     zIndex: 2,
   },
   stampSealInner: {
@@ -2802,7 +2811,7 @@ function createStyles(palette: Palette) {
   stampSealContent: {
     width: 148,
     alignItems: 'center',
-    gap: 8,
+    gap: 7,
   },
   stampSealTitle: {
     fontFamily: fonts.display,
